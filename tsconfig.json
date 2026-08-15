@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }],
+  // Compilation uses the referenced projects; this `paths` copy exists because
+  // tools that read only the root tsconfig (the shadcn CLI among them) otherwise
+  // fail to resolve `@/` and write generated components to a literal `@` folder.
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
