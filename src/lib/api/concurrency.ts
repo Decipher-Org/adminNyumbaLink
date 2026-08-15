@@ -20,23 +20,26 @@
  * development, so it was worse there.
  *
  * That backend now runs `connection_limit=10&pool_timeout=20` and serves
- * `GET /admin/dashboard`, so the dashboard is a single request and the arithmetic is
- * no longer tight. Two is kept deliberately anyway:
+ * `GET /admin/dashboard`. Replaying the same seven-request fan-out afterwards: 0.9s,
+ * 1.8s, and five more inside 2.5s, all 200 — parallel rather than single-file. The
+ * dashboard itself is now one 0.84s request plus one 0.84s page of properties.
+ *
+ * Four is chosen against the pool rather than guessed: each admin list route runs two
+ * queries, so four requests in flight occupies eight of ten connections, and a
+ * StrictMode double-mount briefly needing sixteen drains in two waves well inside the
+ * twenty-second timeout. The cap is kept at all, rather than removed, for two reasons:
  *
  *   - It bounds the damage when a screen fans out per-row. `listPropertiesWithLandlord`
- *     is N+1 by necessity, and N is a page of listings, not a fixed number.
- *   - It is the only value that is safe against *both* backend versions. The console
- *     still falls back to six count requests when `/admin/dashboard` 404s, and that
- *     fallback exists precisely for a backend that has not been redeployed — which is
- *     also a backend still holding one connection.
- *   - Two requests in flight also survives the StrictMode double-mount: four
- *     concurrent requests was the last rung of that staircase that did not time out.
+ *     is N+1 by necessity, and N is a page of listings, not a fixed number. That is
+ *     the only caller for which this value still changes anything measurable.
+ *   - The console still falls back to six count requests when `/admin/dashboard`
+ *     answers 404, and a backend without that route is also a backend that may still
+ *     be holding one connection.
  *
- * Raising it to about five is reasonable once every environment has the pooled
- * connection limit. It should not exceed the backend's `connection_limit` divided by
- * the two queries each admin list route runs.
+ * It should not exceed the backend's `connection_limit` divided by the two queries
+ * each admin list route runs.
  */
-export const REQUEST_CONCURRENCY = 2;
+export const REQUEST_CONCURRENCY = 4;
 
 /**
  * Run `tasks` with at most `limit` of them in flight, preserving input order.
