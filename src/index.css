@@ -1,0 +1,246 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Design tokens shared with the tenant/landlord client (`nyumbalink/src/index.css`).
+   They are duplicated rather than imported because the two apps are separate
+   repos with separate deploys — but they must stay in step: the same status must
+   never be one green here and another green there when an ops user has both open.
+   Treat this block as a copy of that file, and port changes in both directions.
+
+   The admin-only additions are the `--sidebar-*` family at the end. */
+:root {
+  --radius: 0.75rem;
+
+  /* Neutrals */
+  --background: #f1efe8;
+  --foreground: #2c2c2a; /* Text Primary */
+  --muted-foreground: #5f5e5a; /* Text Secondary */
+
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+  /* Warm off-white for cards raised over the page ground. */
+  --surface: #f8f7f2;
+  --muted: #e9e7df;
+
+  /* Brand — teal */
+  --primary: #0f6e56; /* Deep Teal */
+  --primary-foreground: #ffffff;
+  --primary-mid: #1d9e75; /* Mid Teal — charts, hover, accents on dark */
+  --secondary: #e1f5ee; /* Light Teal */
+  --secondary-foreground: #0f6e56;
+
+  /* Brand — coral */
+  --accent: #d85a30; /* Coral */
+  --accent-foreground: #ffffff;
+  --accent-soft: #f5c4b3; /* Light Coral */
+  --accent-strong: #7c2d12;
+
+  /* Status. Each has a soft background and a strong text tone so a badge can be
+     tint-on-dark-text and still clear WCAG AA, which solid-on-white does not. */
+  --success: #22c55e;
+  --success-soft: #dcfce7;
+  --success-strong: #15803d;
+
+  --warning: #f59e0b;
+  --warning-soft: #fef3c7;
+  --warning-strong: #b45309;
+
+  --destructive: #ef4444;
+  --destructive-soft: #fee2e2;
+  --destructive-strong: #b91c1c;
+  --destructive-solid: #b91c1c;
+  --destructive-on-solid: #ffffff;
+
+  --info: #3b82f6;
+  --info-soft: #dbeafe;
+  --info-strong: #1d4ed8;
+
+  --inactive: #9ca3af;
+  --inactive-soft: #f3f4f6;
+  --inactive-strong: #4b5563;
+
+  --border: #dedbd1;
+  --input: #dedbd1;
+  --ring: #0f6e56;
+
+  /* Sidebar — admin only.
+
+     The nav rail is a dark forest ground, a step below Deep Teal, so the shell
+     reads as an internal console rather than another tenant-facing page. The
+     values are chosen for contrast on that ground, not picked by eye:
+       --sidebar-foreground on --sidebar   10.2:1
+       --sidebar-muted      on --sidebar    5.7:1
+       white                on --sidebar-accent  4.9:1  (the active pill)
+     Anything lighter for the accent drops the active row's label below AA. */
+  --sidebar: #0a4a38;
+  --sidebar-foreground: #e8f3ee;
+  --sidebar-muted: #a9c9bd;
+  --sidebar-accent: #17805f;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 12%);
+}
+
+.dark {
+  --background: #1a1c1b;
+  --foreground: #f2f1ec;
+  --muted-foreground: #a8a7a1;
+
+  --card: #232624;
+  --card-foreground: var(--foreground);
+  --popover: #232624;
+  --popover-foreground: var(--foreground);
+  --surface: #1f2220;
+  --muted: #2c302e;
+
+  /* Deep Teal is too dark to carry text on a dark ground; Mid Teal is the
+     sheet's own lighter step, so dark mode promotes it to primary. */
+  --primary: #1d9e75;
+  --primary-foreground: #08211a;
+  --primary-mid: #2fbc8e;
+  --secondary: #16342a;
+  --secondary-foreground: #cdeee2;
+
+  --accent: #e57249;
+  --accent-foreground: #2a0f06;
+  --accent-soft: #4a2418;
+  --accent-strong: #fdba74;
+
+  --success: #34d399;
+  --success-soft: #10281f;
+  --success-strong: #6ee7b7;
+
+  --warning: #fbbf24;
+  --warning-soft: #2a2010;
+  --warning-strong: #fcd34d;
+
+  --destructive: #f87171;
+  --destructive-soft: #2d1414;
+  --destructive-strong: #fca5a5;
+  --destructive-solid: #f87171;
+  --destructive-on-solid: #2d0a0a;
+
+  --info: #60a5fa;
+  --info-soft: #131f33;
+  --info-strong: #93c5fd;
+
+  --inactive: #9ca3af;
+  --inactive-soft: #26292b;
+  --inactive-strong: #cbd5e1;
+
+  --border: rgb(255 255 255 / 12%);
+  --input: rgb(255 255 255 / 16%);
+  --ring: #1d9e75;
+
+  /* The rail is already dark in light mode. It steps down rather than up, so it
+     still separates from the darker page ground behind it. */
+  --sidebar: #0b3a2d;
+  --sidebar-foreground: #e8f3ee;
+  --sidebar-muted: #9dbfb2;
+  --sidebar-accent: #17805f;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 10%);
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-mid: var(--primary-mid);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-strong: var(--accent-strong);
+  --color-surface: var(--surface);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-strong: var(--success-strong);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-strong: var(--warning-strong);
+  --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-strong: var(--destructive-strong);
+  --color-destructive-solid: var(--destructive-solid);
+  --color-destructive-on-solid: var(--destructive-on-solid);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-strong: var(--info-strong);
+  --color-inactive: var(--inactive);
+  --color-inactive-soft: var(--inactive-soft);
+  --color-inactive-strong: var(--inactive-strong);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+/* Application type scale, matching the tenant client's so a shared component
+   ported between the two apps keeps its sizing. */
+@utility text-h1 {
+  font-size: 1.75rem; /* 28px */
+  line-height: 2.125rem;
+  font-weight: 700;
+}
+@utility text-h2 {
+  font-size: 1.375rem; /* 22px */
+  line-height: 1.75rem;
+  font-weight: 600;
+}
+@utility text-h3 {
+  font-size: 1.125rem; /* 18px */
+  line-height: 1.5rem;
+  font-weight: 600;
+}
+@utility text-body {
+  font-size: 1rem; /* 16px */
+  line-height: 1.5rem;
+  font-weight: 400;
+}
+@utility text-body-sm {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem;
+  font-weight: 400;
+}
+@utility text-caption {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem;
+  font-weight: 400;
+}
