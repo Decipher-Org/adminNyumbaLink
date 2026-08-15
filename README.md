@@ -59,6 +59,75 @@ silently logged out.
 
 ---
 
+## Deploying to Vercel
+
+`vercel.json` carries the whole deploy: framework, build command, output directory,
+the SPA rewrite, cache headers and security headers. Point a Vercel project at this
+directory and it builds. If the repository root is `propertyHub/`, set **Root
+Directory** to `adminNyumbaLink` — that is also what makes Vercel read this
+`vercel.json` instead of looking for one at the top. The build command is
+`npm run build`, which typechecks first, so a type error fails the deploy rather
+than shipping. Output is static; there are no functions and no Node runtime.
+
+`VITE_API_URL` is set in `build.env` rather than the dashboard, so a fresh project
+builds correctly with nothing configured. That is safe for this one variable and
+only this one — an API origin is public the moment the browser requests it. Nothing
+else goes there: Vite inlines every `VITE_*` into the bundle in plain text, which is
+why the backend's secrets are not referenced anywhere in this project.
+
+It is inlined **at build time**, so changing the API origin is a redeploy, not a
+restart. `vite.config.ts` fails the build outright if the variable is missing or
+`http://` while `VERCEL` is set, because the `http://localhost:8080` default would
+otherwise ship happily and then present as a backend outage.
+
+### The backend has to allow the origin
+
+This is the thing most likely to break an otherwise-correct deploy.
+`propertyHubBackend/.env` currently reads:
+
+```
+CORS_ORIGIN=https://nyumbalink.co.ke,https://admin.nyumbalink.co.ke
+BETTER_AUTH_TRUSTED_ORIGINS=https://nyumbalink.co.ke,https://admin.nyumbalink.co.ke
+```
+
+Both are strict comma-separated allowlists, so **`https://admin.nyumbalink.co.ke`
+already works** — assign that domain in Vercel and there is nothing to change
+server-side. Any other origin, every `*.vercel.app` preview URL included, is
+rejected by CORS before Better Auth is even reached: the login POST fails and the
+console looks broken rather than misconfigured. Add such an origin to *both*
+variables — `CORS_ORIGIN` for the browser, `BETTER_AUTH_TRUSTED_ORIGINS` for Better
+Auth's own origin check — and restart the API.
+
+### What the headers do
+
+- `/(.*)` → `/index.html` is the catch-all react-router needs. Vercel checks the
+  filesystem first, so `/assets/*`, the favicons and `site.webmanifest` still serve
+  as themselves; only unmatched paths reach the app, which renders its own
+  `NotFound`.
+- `/assets/*` is `immutable` for a year because Vite fingerprints those filenames.
+  Everything else is `max-age=0, must-revalidate` — `index.html`, the icons and the
+  manifest keep their names forever, and a cached `index.html` would pin a browser
+  to a bundle that no longer exists.
+- `X-Robots-Tag: noindex` matches the `<meta>` already in `index.html`; the header
+  also covers the assets a meta tag cannot reach.
+- The session token lives in `localStorage` (`lib/auth/session.ts`), so
+  `script-src 'self'` is the directive that actually matters — injected script is
+  what would read it. The built `index.html` contains no inline `<script>`, so
+  `'self'` needs no nonce or hash.
+
+**The CSP is the one header not verified against a real deploy.** It is derived from
+what the bundle demonstrably does: Google Fonts (`style-src` and `font-src` allow
+`fonts.googleapis.com` and `fonts.gstatic.com`), Radix and sonner injecting `<style>`
+tags at runtime (`'unsafe-inline'` in `style-src`), and landlord photos and property
+images arriving as arbitrary API URLs (`img-src https:`). `connect-src 'self' https:`
+is deliberately loose because this file cannot know each environment's API origin;
+narrow it to `https://api.nyumbalink.co.ke` if you don't need previews pointing
+elsewhere. If something renders unstyled or an image fails, the browser console names
+the directive that blocked it — and deleting the `Content-Security-Policy` entry is a
+safe one-line rollback that leaves every other header in place.
+
+---
+
 ## What is real and what is not
 
 Ten screens. Roughly half the console runs on live data.
@@ -284,3 +353,9 @@ fields `lib/api/types.ts` declares, and `/users/me` returns the narrower seriali
 The dev database had **no ACTIVE properties** at the time of checking, which
 exercises the fallback paths: the dashboard's top-areas panel falls back to sample
 areas and says so, and Properties shows only the labelled non-live rows.
+
+The deploy config was checked as far as it can be without deploying: building with
+`VERCEL=1` and the production origin inlines `https://api.nyumbalink.co.ke` into the
+bundle and leaves no `localhost` anywhere in it, and building with the variable
+removed fails with the message quoted above instead of succeeding quietly. The CSP
+is the stated exception — a header can only be confirmed against a real response.
