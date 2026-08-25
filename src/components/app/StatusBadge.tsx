@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { PropertyStatus, Role, UserStatus } from "@/lib/api/types";
-import type { PaymentStatus, SubscriptionStatus } from "@/lib/demo/finance";
+import type { PaymentStatus, PropertyStatus, Role, UserStatus } from "@/lib/api/types";
 import type { DocumentStatus, ReportStatus } from "@/lib/demo/ops";
 import { cn } from "@/lib/utils";
 
@@ -143,10 +142,25 @@ export function PropertyStatusBadge({
 
 // ------------------------------------------------------------------- money
 
+/**
+ * All five backend statuses.
+ *
+ * `PENDING` and `QUEUED` are both amber because both are non-terminal — the payer is
+ * looking at a prompt, or M-Pesa has it and hasn't said what happened. They are kept
+ * distinct rather than collapsed into one "Pending" because they fail differently:
+ * a row stuck at `QUEUED` reached the gateway and is a reconcile away from an answer,
+ * while one stuck at `PENDING` may never have got that far.
+ *
+ * `CANCELLED` is `inactive`, not destructive: the payer changed their mind at the PIN
+ * prompt. Nothing broke, so red would misattribute it — the same reasoning as
+ * `DEACTIVATED` above.
+ */
 const PAYMENT_STATUS_MAP: Record<PaymentStatus, { tone: Tone; label: string }> = {
-  SUCCESS: { tone: "success", label: "Successful" },
   PENDING: { tone: "warning", label: "Pending" },
+  QUEUED: { tone: "warning", label: "Queued" },
+  SUCCESS: { tone: "success", label: "Successful" },
   FAILED: { tone: "destructive", label: "Failed" },
+  CANCELLED: { tone: "inactive", label: "Cancelled" },
 };
 
 export function PaymentStatusBadge({
@@ -156,7 +170,7 @@ export function PaymentStatusBadge({
   status: PaymentStatus;
   className?: string;
 }) {
-  const entry = PAYMENT_STATUS_MAP[status];
+  const entry = PAYMENT_STATUS_MAP[status] ?? { tone: "muted" as Tone, label: status };
   return (
     <Pill tone={entry.tone} className={className}>
       {entry.label}
@@ -164,23 +178,27 @@ export function PaymentStatusBadge({
   );
 }
 
-const SUBSCRIPTION_STATUS_MAP: Record<SubscriptionStatus, { tone: Tone; label: string }> = {
-  ACTIVE: { tone: "success", label: "Active" },
-  EXPIRED: { tone: "destructive", label: "Expired" },
-  CANCELLED: { tone: "inactive", label: "Cancelled" },
-};
-
+/**
+ * A landlord term takes a boolean, not a status string.
+ *
+ * There is no `EXPIRED` or `CANCELLED` column to read: a term is a 30-day block on one
+ * property, and the backend derives `active` as `expiresAt > now`. Nothing cancels one
+ * early, so the only question is whether it still has time left.
+ *
+ * "Lapsed" rather than "Expired" because the term is renewable and usually renewed —
+ * and `destructive` rather than `inactive` because a lapsed term is the renewal queue's
+ * whole reason for existing, so it has to read as needing attention.
+ */
 export function SubscriptionStatusBadge({
-  status,
+  active,
   className,
 }: {
-  status: SubscriptionStatus;
+  active: boolean;
   className?: string;
 }) {
-  const entry = SUBSCRIPTION_STATUS_MAP[status];
   return (
-    <Pill tone={entry.tone} className={className}>
-      {entry.label}
+    <Pill tone={active ? "success" : "destructive"} className={className}>
+      {active ? "Active" : "Lapsed"}
     </Pill>
   );
 }
