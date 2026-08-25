@@ -10,26 +10,14 @@
  * every render and two panels can't disagree about the same figure.
  *
  * Where a number can be real, it is: the dashboard's user, landlord and property
- * counts come from `pagination.total` on live endpoints, and the top-areas panel
+ * counts come from `pagination.total` on live endpoints, revenue and subscriptions
+ * come from `GET /admin/dashboard` since Milestones 4–5, and the top-areas panel
  * groups real listings. Only the parts with no endpoint behind them live here.
  */
 
 import type { PropertyCard } from "@/lib/api/types";
 import { minutesAgo, seededBetween } from "@/lib/demo/seed";
-
-// ------------------------------------------------------------- date ranges
-
-export type RangeKey = "7d" | "30d" | "90d";
-
-export const RANGE_OPTIONS: { value: RangeKey; label: string; days: number }[] = [
-  { value: "7d", label: "Last 7 days", days: 7 },
-  { value: "30d", label: "Last 30 days", days: 30 },
-  { value: "90d", label: "Last 90 days", days: 90 },
-];
-
-export function daysForRange(range: RangeKey): number {
-  return RANGE_OPTIONS.find((option) => option.value === range)?.days ?? 7;
-}
+import { pointLabel, type TrendPoint } from "@/lib/series";
 
 // ------------------------------------------------------------------ deltas
 
@@ -53,16 +41,6 @@ export const DEMO_DELTAS = {
 
 // ------------------------------------------------------------------ trends
 
-export type TrendPoint = { label: string; value: number };
-
-/** "Mon" for a week, "20 May" for anything longer, where a weekday repeats. */
-function pointLabel(index: number, days: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() - (days - 1 - index));
-  if (days <= 7) return date.toLocaleDateString("en-GB", { weekday: "short" });
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
-
 /**
  * Daily signups across the range. Trends gently upward — a flat line reads as
  * broken — with seeded noise on top so it looks like real traffic rather than a
@@ -75,67 +53,6 @@ export function demoRegistrationsTrend(days: number): TrendPoint[] {
     return { label: pointLabel(index, days), value: Math.round(base * growth) };
   });
 }
-
-/**
- * Revenue is defined by its **total** rather than its daily values: the stat card
- * says KSh 3.24M for the month, so the bars are scaled to sum to exactly that.
- * Generating bars independently would leave the card and the chart it sits next to
- * quietly contradicting each other.
- */
-const DEMO_REVENUE_TOTALS: Record<number, number> = {
-  7: 1_842_600,
-  30: 3_242_000,
-  90: 9_180_400,
-};
-
-export function demoRevenueTotal(days: number): number {
-  return DEMO_REVENUE_TOTALS[days] ?? Math.round((3_242_000 * days) / 30);
-}
-
-export function demoRevenueTrend(days: number): TrendPoint[] {
-  const weights = Array.from(
-    { length: days },
-    (_, index) => seededBetween(`rev:${days}:${index}`, 55, 140) + (index * 45) / days,
-  );
-  const sum = weights.reduce((total, weight) => total + weight, 0);
-  const target = demoRevenueTotal(days);
-
-  return weights.map((weight, index) => ({
-    label: pointLabel(index, days),
-    value: Math.round((target * weight) / sum),
-  }));
-}
-
-/** Today / this week / this month, as the Payments cards show them. */
-export const DEMO_REVENUE_SUMMARY = {
-  today: 245_300,
-  week: 1_842_600,
-  month: 3_242_000,
-  todayDelta: 12.4,
-  weekDelta: 18.7,
-  monthDelta: 15.9,
-} as const;
-
-// ----------------------------------------------------- subscription mix
-
-export type SubscriptionSlice = {
-  key: "ACTIVE" | "EXPIRED" | "CANCELLED";
-  label: string;
-  count: number;
-};
-
-/**
- * The subscription donut. `toAdminLandlord` returns a hardcoded "PENDING" for
- * every landlord, so there is no real distribution to read — not even a
- * degenerate one.
- */
-export const DEMO_SUBSCRIPTION_MIX: SubscriptionSlice[] = [
-  { key: "ACTIVE", label: "Active", count: 3_215 },
-  { key: "EXPIRED", label: "Expired", count: 1_822 },
-  { key: "CANCELLED", label: "Cancelled", count: 403 },
-];
-
-export const DEMO_ACTIVE_SUBSCRIPTIONS = 3_215;
 
 // --------------------------------------------------------- activity feed
 
@@ -179,8 +96,11 @@ export function demoActivity(): ActivityItem[] {
     {
       id: "a3",
       kind: "subscription",
-      title: "Subscription renewed",
-      detail: "Premium plan · KSh 4,500 · Otieno Properties",
+      // Sample, but shaped like a real Milestone 5 event: a 30-day term on one
+      // property, priced per rentable unit. "Premium plan · KSh 4,500" invented a
+      // tier and a monthly fee that neither the schema nor the pricing has.
+      title: "Listing term renewed",
+      detail: "2 units · KSh 80 · Otieno Properties",
       at: minutesAgo(64),
     },
     {
