@@ -82,6 +82,11 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
  *
  * An "Approved" tab is added to the design's three. `?verified=true` is free, and a
  * queue you cannot look behind makes it impossible to check your own work.
+ *
+ * The Properties column carries Milestone 5: `subscriptions` arrives on every row, so
+ * the count is qualified by how many of those properties hold a live 30-day term. Both
+ * numbers count properties at *any* status — see `coverageNote` for why the caption
+ * says "with a live term" rather than repeating the wire field's word, "lapsed".
  */
 
 type TabKey = "pending" | "documents" | "approved" | "rejections";
@@ -264,6 +269,8 @@ export default function Landlords() {
         "Approved",
         "Account status",
         "Properties",
+        "With a live term",
+        "Without a term",
         "Registered",
       ],
       rows: source.map((row) => [
@@ -275,6 +282,11 @@ export default function Landlords() {
         row.verified ? "Yes" : "No",
         formatEnum(row.accountStatus),
         row.propertiesCount,
+        // Three columns rather than one "3 active · 1 lapsed" string, because a
+        // spreadsheet is the one place these get summed. "Without a term" is the
+        // honest name for `lapsed`: it also counts properties that never had one.
+        row.subscriptions.active,
+        row.subscriptions.lapsed,
         formatDate(row.createdAt),
       ]),
       scopeNote: pagination
@@ -453,7 +465,7 @@ export default function Landlords() {
                             </TableCell>
 
                             <TableCell className="text-right tabular-nums">
-                              {formatNumber(row.propertiesCount)}
+                              <SubscriptionBreakdown landlord={row} />
                             </TableCell>
 
                             <TableCell className="whitespace-nowrap text-muted-foreground">
@@ -548,9 +560,15 @@ export default function Landlords() {
                                 </dd>
                               </div>
                               <div className="flex gap-1">
-                                <dt className="text-muted-foreground">Listings</dt>
-                                <dd className="text-foreground tabular-nums">
+                                <dt className="text-muted-foreground">Properties</dt>
+                                <dd className="min-w-0 truncate text-foreground tabular-nums">
                                   {formatNumber(row.propertiesCount)}
+                                  {coverageNote(row.subscriptions) ? (
+                                    <span className="text-muted-foreground">
+                                      {" · "}
+                                      {coverageNote(row.subscriptions)}
+                                    </span>
+                                  ) : null}
                                 </dd>
                               </div>
                               <div className="col-span-2 flex gap-1">
@@ -699,7 +717,17 @@ function LandlordDetailSheet({
               <Field label="Business name" value={landlord.businessName} />
               <Field label="National ID" value={landlord.nationalId} />
               <Field label="M-Pesa number" value={landlord.mpesaNumber} />
-              <Field label="Live listings" value={formatNumber(landlord.propertiesCount)} />
+              {/*
+                "Properties", not "Live listings" — `propertiesCount` is every property
+                this landlord owns at any status, so the old label counted drafts and
+                archived rows as live ones.
+              */}
+              <Field
+                label="Properties"
+                value={[formatNumber(landlord.propertiesCount), coverageNote(landlord.subscriptions)]
+                  .filter(Boolean)
+                  .join(" · ")}
+              />
               <Field
                 label="Registered"
                 value={`${formatDate(landlord.createdAt)} · ${formatRelative(landlord.createdAt)}`}
@@ -772,6 +800,40 @@ function Field({
   );
 }
 
+/**
+ * How many of a landlord's properties are paid up, in words.
+ *
+ * Milestone 5 sells a 30-day term per property, so a landlord has no single
+ * subscription state — this is the closest thing to one. The phrasing deliberately
+ * avoids the wire field's name: `lapsed` is `properties - active`, which also counts a
+ * property that never had a term at all, so calling those "lapsed" in the UI would
+ * report an expiry that never happened. What the numbers actually support is "has a
+ * live term" and "doesn't".
+ *
+ * Returns `undefined` for a landlord with no properties, where there is nothing to
+ * qualify and "none with a live term" would read as a problem rather than an empty set.
+ */
+function coverageNote({ properties, active }: AdminLandlord["subscriptions"]): string | undefined {
+  if (properties === 0) return undefined;
+  if (active === 0) return "none with a live term";
+  if (active === properties) return "all with a live term";
+  return `${formatNumber(active)} with a live term`;
+}
+
+/** The Properties cell: the count, with `coverageNote` as a caption under it. */
+function SubscriptionBreakdown({ landlord }: { landlord: AdminLandlord }) {
+  const note = coverageNote(landlord.subscriptions);
+  return (
+    <>
+      {formatNumber(landlord.propertiesCount)}
+      {note ? (
+        <span className="block text-caption font-normal whitespace-nowrap text-muted-foreground">
+          {note}
+        </span>
+      ) : null}
+    </>
+  );
+}
 /**
  * The design's ✗ action, rebuilt around what the API can do.
  *
