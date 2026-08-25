@@ -1,4 +1,4 @@
-import { RANGE_OPTIONS, type RangeKey } from "@/lib/demo/dashboard";
+import { RANGE_OPTIONS, type RangeKey } from "@/lib/series";
 import {
   Select,
   SelectContent,
@@ -8,11 +8,12 @@ import {
 } from "@/components/ui/select";
 
 /**
- * The date-range selector the design puts in the top right of the dashboard and
- * analytics screens.
+ * The date-range selector the design puts in the top right of the dashboard,
+ * payments and analytics screens.
  *
- * It is honest about its reach: the ranges drive the demo trend series, and the
- * live counts beside them are all-time totals that no range can narrow — nothing in
+ * It is honest about its reach: on the dashboard and Payments the range drives real
+ * revenue, on Analytics it drives the demo series, and the live user and property
+ * counts beside them are all-time totals that no range can narrow — nothing in
  * `GET /admin/users` accepts a date window. The screens say which cards the range
  * applies to rather than implying it filters everything.
  */
