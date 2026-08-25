@@ -3,16 +3,30 @@
  *
  * Every route here exists and is enforced by `requireAuth` + `requireRole(ADMIN)`
  * server-side (`src/routes/admin.js`). `GET /admin/dashboard` was added for this
- * console — three grouped counts in one request, replacing six `limit=1` list calls.
- * The families API.md also documents — `GET /admin/payments`, `GET /admin/reports`,
- * `PATCH /admin/reports/:id/resolve` — are **not** mounted in the router, so they are
- * absent from this module rather than stubbed in it. Screens that need those numbers
- * pull from `lib/demo/` and say so on screen.
+ * console — nine grouped counts in one request, replacing six `limit=1` list calls
+ * and a separate revenue fetch.
+ *
+ * `GET /admin/reports` and `PATCH /admin/reports/:id/resolve` are documented in
+ * API.md and mounted, but this console has no reports screen yet (Milestone 7), so
+ * they are absent from this module rather than stubbed in it.
  */
 
 import { apiFetch, apiFetchPaged, ApiError, type ApiPagination } from "./client";
 import { runWithConcurrency } from "./concurrency";
-import type { AdminLandlord, AdminUser, Role, UserStatus } from "./types";
+import type {
+  AdminLandlord,
+  AdminPayment,
+  AdminSubscription,
+  AdminUser,
+  PaymentDto,
+  PaymentPurpose,
+  PaymentStatus,
+  ReconcileResult,
+  RevenuePoint,
+  RevenueSeries,
+  Role,
+  UserStatus,
+} from "./types";
 
 export type Paged<T> = { items: T[]; pagination: ApiPagination };
 
@@ -124,6 +138,128 @@ export function approveLandlord(id: string): Promise<AdminLandlord> {
   return apiFetch<AdminLandlord>(`/admin/landlords/${id}/approve`, { method: "PATCH" });
 }
 
+// ---------------------------------------------------------------- payments
+
+export type ListPaymentsParams = {
+  page?: number;
+  limit?: number;
+  status?: PaymentStatus | "";
+  purpose?: PaymentPurpose | "";
+  /**
+   * One free-text term, matched server-side across the M-Pesa receipt, both gateway
+   * identifiers, our own reference, the phone number, and the payer's name and email.
+   * A phone-shaped term matches on its significant digits, so `0722334455` and
+   * `+254722334455` find the same rows.
+   */
+  search?: string;
+  signal?: AbortSignal;
+};
+
+/**
+ * `GET /admin/payments` — every user's payments, newest first.
+ *
+ * No `provider` param is threaded even though the backend accepts one: `MPESA` is the
+ * only value, so filtering on it is filtering on nothing.
+ */
+export async function listAdminPayments({ signal, ...query }: ListPaymentsParams = {}): Promise<
+  Paged<AdminPayment>
+> {
+  const result = await apiFetchPaged<AdminPayment[]>("/admin/payments", { query, signal });
+  return toPaged(result);
+}
+
+/**
+ * `GET /admin/payments/revenue` — successful payments summed by EAT calendar day.
+ *
+ * `days` must be 7, 30 or 90; anything else is a `400` from the server rather than a
+ * clamp, so don't compute one here.
+ *
+ * The dashboard does **not** need this call: `GET /admin/dashboard` already embeds its
+ * own 30-day series, and both come from one backend helper. Use this for the other two
+ * windows.
+ */
+export function fetchRevenueSeries({
+  days = 30,
+  signal,
+}: { days?: 7 | 30 | 90; signal?: AbortSignal } = {}): Promise<RevenueSeries> {
+  return apiFetch<RevenueSeries>("/admin/payments/revenue", { query: { days }, signal });
+}
+
+/**
+ * A single payment — `/payments/:id`, **not** `/admin/payments/:id`, which does not exist.
+ *
+ * That is not a mistake. `findOwnedPayment` in `routes/payments.js` skips the ownership
+ * check when the caller is an ADMIN, so the user-facing detail route already answers for
+ * any payment on the platform. Note the shape difference: this route returns
+ * `toPaymentDto` **without** the admin-only `gatewayReference` / `checkoutRequestId` /
+ * `user`, so the list is the richer source and this is here for a fresh read after a
+ * reconcile.
+ */
+export function getAdminPayment(id: string, signal?: AbortSignal): Promise<PaymentDto> {
+  return apiFetch<PaymentDto>(`/payments/${id}`, { signal });
+}
+
+/**
+ * The reconcile response plus the envelope's own `message`.
+ *
+ * The message is the point of the call — see below — and `apiFetch` throws it away, so
+ * this one goes through `apiFetchPaged`, which is the only helper that returns the
+ * envelope's siblings. The name is about the return shape, not about paging; there is no
+ * `pagination` on this route and none is read.
+ */
+export type ReconcileOutcome = ReconcileResult & { message?: string };
+
+/**
+ * Ask PayHero what actually happened to a payment — the answer to "this one is stuck
+ * at QUEUED". Same reason as `getAdminPayment` for the non-`/admin` path.
+ *
+ * Idempotent, and safe to offer without a confirmation step: it writes only what the
+ * gateway reports, through the same settlement path as the webhook. **`applied: false`
+ * is not an error** — already settled, never reached the provider, and not recognised
+ * yet are three different pieces of news, and the backend's `message` words each one.
+ * Show that message.
+ */
+export async function reconcileAdminPayment(
+  id: string,
+  signal?: AbortSignal,
+): Promise<ReconcileOutcome> {
+  const { data, message } = await apiFetchPaged<ReconcileResult>(`/payments/${id}/reconcile`, {
+    method: "POST",
+    signal,
+  });
+  return { ...data, message };
+}
+
+// ----------------------------------------------------------- subscriptions
+
+export type ListSubscriptionsParams = {
+  page?: number;
+  limit?: number;
+  /** `true` is the renewal-chasing list, `false` the live ones. Omit for both. */
+  expired?: boolean;
+  propertyId?: string;
+  signal?: AbortSignal;
+};
+
+/**
+ * `GET /admin/subscriptions` — landlord terms, **soonest to expire first**.
+ *
+ * That ordering is the server's and is deliberate: unlike the other admin lists this
+ * one answers "what is about to lapse", not "what happened lately". There is no search
+ * param — to find one landlord's terms, go through `/admin/landlords` and filter by
+ * `propertyId`.
+ */
+export async function listAdminSubscriptions({
+  signal,
+  ...query
+}: ListSubscriptionsParams = {}): Promise<Paged<AdminSubscription>> {
+  const result = await apiFetchPaged<AdminSubscription[]>("/admin/subscriptions", {
+    query,
+    signal,
+  });
+  return toPaged(result);
+}
+
 // ----------------------------------------------------------------- counts
 
 export type PlatformCounts = {
@@ -139,10 +275,56 @@ export type PlatformCounts = {
    * `pagination.total` for this card, so it fills the gap.
    */
   liveProperties?: number;
+  /**
+   * Milestones 4 and 5. Optional for the same reason as `liveProperties`, and it
+   * matters more here: `fetchPlatformCountsFromLists` cannot produce either block, and
+   * a `0` would be indistinguishable from a true count of none. Absent renders as `—`.
+   */
+  payments?: DashboardPayments;
+  subscriptions?: DashboardSubscriptions;
 };
 
-/** The `GET /admin/dashboard` envelope. See API.md — three grouped counts. */
-type DashboardResponse = {
+/**
+ * The `payments` block of `GET /admin/dashboard`.
+ *
+ * `pending` is `PENDING + QUEUED` and all-time on purpose — a payment stuck for three
+ * weeks is exactly the one worth surfacing, so windowing it would hide the only figure
+ * on the dashboard anyone has to act on. `failed7d` is windowed for the opposite
+ * reason: old failures are noise, a spike is a signal.
+ *
+ * The three revenue totals are sums over `series30d`'s tail, computed server-side from
+ * the same array, so a stat card and the chart beside it cannot disagree.
+ */
+export type DashboardPayments = {
+  total: number;
+  pending: number;
+  succeeded: number;
+  failed: number;
+  cancelled: number;
+  failed7d: number;
+  revenueToday: number;
+  revenue7d: number;
+  revenue30d: number;
+  currency: string;
+  /** 30 zero-filled daily points, oldest first. */
+  series30d: RevenuePoint[];
+};
+
+/**
+ * The `subscriptions` block.
+ *
+ * `landlordActive` / `landlordLapsed` count **property terms**; `tenantPassesLive`
+ * counts distinct **tenants** holding a live day pass. Two different units — they must
+ * never share a denominator or a chart.
+ */
+export type DashboardSubscriptions = {
+  landlordActive: number;
+  landlordLapsed: number;
+  tenantPassesLive: number;
+};
+
+/** The `GET /admin/dashboard` envelope. See API.md. */
+export type DashboardResponse = {
   users: {
     total: number;
     tenants: number;
@@ -154,13 +336,15 @@ type DashboardResponse = {
   };
   landlords: { total: number; verified: number; pendingApproval: number };
   properties: { total: number; active: number; draft: number; hidden: number; archived: number };
+  payments: DashboardPayments;
+  subscriptions: DashboardSubscriptions;
 };
 
 /**
  * The dashboard's headline numbers.
  *
- * Prefers `GET /admin/dashboard` — one request, three grouped queries server-side.
- * Falls back to assembling the same figures from six `limit=1` list calls when that
+ * Prefers `GET /admin/dashboard` — one request, nine grouped queries server-side.
+ * Falls back to assembling what it can from six `limit=1` list calls when that
  * endpoint answers 404.
  *
  * The fallback is not defensive habit: this endpoint was documented in API.md long
@@ -174,7 +358,7 @@ type DashboardResponse = {
  * than a reconciled breakdown. The grouped path narrows that window to a single
  * query but does not close it.
  *
- * Real Milestone 1–3 data. The growth percentages beside them are not; those come
+ * Real Milestone 1–5 data. The growth percentages beside them are not; those come
  * from `lib/demo/` because no endpoint reports a previous period.
  */
 export async function fetchPlatformCounts(signal?: AbortSignal): Promise<PlatformCounts> {
@@ -188,6 +372,8 @@ export async function fetchPlatformCounts(signal?: AbortSignal): Promise<Platfor
       suspended: d.users.suspended,
       pendingApprovals: d.landlords.pendingApproval,
       liveProperties: d.properties.active,
+      payments: d.payments,
+      subscriptions: d.subscriptions,
     };
   } catch (error) {
     if (!(error instanceof ApiError) || error.status !== 404) throw error;
@@ -203,6 +389,9 @@ export async function fetchPlatformCounts(signal?: AbortSignal): Promise<Platfor
  * deliberately *not* issued all at once; six parallel requests is the shape that
  * makes an under-pooled backend return 500s, and `runWithConcurrency` carries the
  * arithmetic.
+ *
+ * Returns no `payments` or `subscriptions`: there is no list route that would total
+ * revenue, and a `0` would read as "nobody has paid". The cards show `—` instead.
  *
  * The order below is the order they resolve in, so the two numbers the dashboard
  * leads with — total users and pending approvals — come first.
