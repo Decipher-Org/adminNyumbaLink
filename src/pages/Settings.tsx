@@ -373,9 +373,9 @@ const PLATFORM_TOGGLES: { id: string; label: string; note: string; checked: bool
   },
   {
     id: "listing-limits",
-    label: "Limit listings by plan",
-    note: "Off — nothing is gated by a subscription, so a verified landlord can publish without limit.",
-    checked: false,
+    label: "Paid term required for visibility",
+    note: "On and not optional since Milestone 5: an ACTIVE listing is hidden from everyone but its owner unless the property holds a 30-day term with time left. There is no cap on how many listings a landlord may create — the gate is per property, not per account.",
+    checked: true,
   },
   {
     id: "maintenance",
