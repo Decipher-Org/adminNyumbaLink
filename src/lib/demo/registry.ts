@@ -2,16 +2,21 @@
  * The registry of everything in this console that is **not** backed by a real
  * endpoint.
  *
- * The backend is complete through Milestone 3 — auth, profiles, properties,
- * units, and the admin users/landlords routes that came with Milestones 1 and 2.
- * The design covers a great deal more, so those surfaces are built and fed from
- * `lib/demo/` instead. This file is the index: one entry per fake feature, naming
- * the milestone that replaces it.
+ * The backend is complete through Milestone 5 — auth, profiles, properties, units,
+ * the admin users/landlords routes from Milestones 1–3, and PayHero payments and
+ * landlord/tenant subscriptions from Milestones 4–5. The design covers a great deal
+ * more, so those surfaces are built and fed from `lib/demo/` instead. This file is
+ * the index: one entry per fake feature, naming the milestone that replaces it.
  *
  * The rule this enforces: **nothing fake is unlabelled.** A screen that reads
  * from `lib/demo/` must render `<DemoBadge>` or `<DemoNotice>`, and a value that
  * isn't in `lib/demo/` must have come from the API. That makes replacing a mock a
  * one-file change, and makes an audit a `grep` rather than a reading exercise.
+ *
+ * Retiring an entry starts by deleting its id from `DemoFeatureId` below, not by
+ * editing the screens: `tsc -b` then enumerates every orphaned `DemoBadge`,
+ * `DemoNotice`, `StatCard demo=` and `NavItem.demo`, which is the whole point of
+ * routing them through one union.
  *
  * It matters more here than in the tenant app. An operator acts on what this
  * screen tells them — suspending an account or approving a landlord on the
@@ -21,9 +26,6 @@
 export type DemoFeatureId =
   | "growthDeltas"
   | "registrationsTrend"
-  | "revenue"
-  | "payments"
-  | "subscriptions"
   | "activityFeed"
   | "views"
   | "analytics"
@@ -57,21 +59,6 @@ export const DEMO_FEATURES: Record<DemoFeatureId, DemoFeature> = {
     label: "Registrations over time",
     milestone: "Milestone 10",
     note: "Sample curve. Users can only be counted in total right now, not grouped by the day they signed up.",
-  },
-  revenue: {
-    label: "Revenue",
-    milestone: "Milestone 4",
-    note: "Sample figures. No payment has ever been recorded — M-Pesa and card collection are not connected.",
-  },
-  payments: {
-    label: "Payments",
-    milestone: "Milestone 4",
-    note: "Sample transactions. There is no payments table and no M-Pesa integration yet.",
-  },
-  subscriptions: {
-    label: "Subscriptions",
-    milestone: "Milestone 5",
-    note: "Sample plans and expiry dates. The backend returns a fixed placeholder status for every landlord and nothing is gated by a plan.",
   },
   activityFeed: {
     label: "Recent activity",

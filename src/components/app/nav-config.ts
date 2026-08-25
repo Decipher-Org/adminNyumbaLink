@@ -3,9 +3,9 @@
  *
  * `demo` marks a destination whose screen is sample data — the shell renders a
  * small dot on those items, so the nav itself is honest about what works rather
- * than the operator finding out after the click. Six of the eleven destinations
+ * than the operator finding out after the click. Four of the ten destinations
  * carry one, which is a fair summary of a backend that is complete through
- * Milestone 3.
+ * Milestone 5.
  *
  * `primary` picks the four items that get a slot in the mobile tab bar; the fifth
  * slot is a "More" button that opens the full list, so nothing is desktop-only.
@@ -62,13 +62,17 @@ export const ADMIN_NAV: NavItem[] = [
     primary: true,
     hint: "Live listings across the platform",
   },
-  { to: "/payments", label: "Payments", icon: CreditCard, demo: "payments", hint: "Transactions" },
+  {
+    to: "/payments",
+    label: "Payments",
+    icon: CreditCard,
+    hint: "M-Pesa transactions and revenue",
+  },
   {
     to: "/subscriptions",
     label: "Subscriptions",
     icon: Wallet,
-    demo: "subscriptions",
-    hint: "Plans and renewals",
+    hint: "Listing terms and expiry",
   },
   { to: "/reports", label: "Reports", icon: Flag, demo: "reports", hint: "Reported listings" },
   {

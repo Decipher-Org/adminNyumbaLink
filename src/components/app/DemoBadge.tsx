@@ -46,8 +46,11 @@ export function DemoBadge({
 
 /**
  * The panel-level version: a full-width strip above a demo surface, for when a
- * whole screen (Payments, Reports, Notifications) is sample data and a small badge
+ * whole screen (Reports, Notifications, Analytics) is sample data and a small badge
  * would be too easy to miss.
+ *
+ * Payments used to be on that list. It came off when Milestones 4 and 5 landed — the
+ * screen is real now, and the only badge left on it marks the CSV export's scope.
  */
 export function DemoNotice({ feature, className }: { feature: DemoFeatureId; className?: string }) {
   const { label, milestone, note } = DEMO_FEATURES[feature];
