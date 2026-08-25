@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   ArrowRight,
   Building2,
+  Clock,
   CreditCard,
   ShieldCheck,
   Users,
@@ -16,22 +17,18 @@ import { RangeSelect } from "@/components/app/RangeSelect";
 import { StatCard, StatCardSkeleton } from "@/components/app/StatCard";
 import { ErrorState, PanelSkeleton } from "@/components/app/States";
 import { Button } from "@/components/ui/button";
-import { fetchPlatformCounts } from "@/lib/api/admin";
+import { fetchPlatformCounts, fetchRevenueSeries } from "@/lib/api/admin";
 import { listProperties } from "@/lib/api/properties";
+import type { RevenuePoint } from "@/lib/api/types";
 import {
-  DEMO_ACTIVE_SUBSCRIPTIONS,
   DEMO_DELTAS,
   DEMO_FALLBACK_AREAS,
-  DEMO_SUBSCRIPTION_MIX,
-  daysForRange,
   demoActivity,
   demoRegistrationsTrend,
-  demoRevenueTotal,
-  demoRevenueTrend,
   demoTopAreas,
-  type RangeKey,
 } from "@/lib/demo/dashboard";
 import { useAsync } from "@/lib/hooks/use-async";
+import { dateLabel, daysForRange, type RangeKey } from "@/lib/series";
 import {
   formatCompact,
   formatKes,
@@ -43,12 +40,16 @@ import {
 /**
  * Dashboard Overview.
  *
- * The five headline counts are **real**: `fetchPlatformCounts` reads them from
- * `GET /admin/dashboard` in one request, falling back to six `limit=1` list calls
- * against an older backend. What is invented is everything that needs history or
- * money — the growth percentages, the two trend charts, the subscription mix, the
- * activity feed, and the view counts in the areas panel. Each of those carries its
- * own badge; see `lib/demo/registry.ts`.
+ * The headline counts are **real** and now include money: `fetchPlatformCounts` reads
+ * users, landlords, properties, payments and subscriptions from `GET /admin/dashboard`
+ * in one request, falling back to six `limit=1` list calls against an older backend. That
+ * fallback cannot produce the money blocks, which is why they are optional on
+ * `PlatformCounts` and render as `—` rather than `0` when absent — a zero would read as
+ * "nobody has paid".
+ *
+ * What is still invented is what needs history the platform doesn't keep: the growth
+ * percentages, the registrations curve, the activity feed, and the view counts in the
+ * areas panel. Each carries its own badge; see `lib/demo/registry.ts`.
  *
  * The property count is worth reading twice: it counts listings at status ACTIVE,
  * so the number is *live listings*, not all listings. The card says "Live
@@ -74,10 +75,24 @@ export default function Dashboard() {
 
   const counts = data?.counts;
   const properties = data?.properties;
+  const payments = counts?.payments;
+  const subscriptions = counts?.subscriptions;
+
+  /**
+   * The dashboard already carries 30 days of revenue, so 7d and 30d are a slice of what
+   * has arrived and cost nothing extra. Only 90d needs its own request — which is why
+   * this fetcher returns `undefined` for the other two rather than duplicating them.
+   */
+  const extended = useAsync(
+    (signal) => (days === 90 ? fetchRevenueSeries({ days: 90, signal }) : Promise.resolve(undefined)),
+    [days],
+  );
+
+  const revenuePoints: RevenuePoint[] | undefined =
+    days === 90 ? extended.data?.points : payments?.series30d.slice(-days);
+  const revenueTotal = revenuePoints?.reduce((sum, point) => sum + point.amount, 0);
 
   const registrations = useMemo(() => demoRegistrationsTrend(days), [days]);
-  const revenueTrend = useMemo(() => demoRevenueTrend(days), [days]);
-  const revenueTotal = demoRevenueTotal(days);
   const activity = useMemo(() => demoActivity(), []);
 
   const areas = useMemo(() => {
@@ -101,7 +116,7 @@ export default function Dashboard() {
     <>
       <PageHeader
         title="Dashboard"
-        description="Live platform counts, with trends and revenue as previews."
+        description="Live platform counts, revenue and listing terms."
         actions={<RangeSelect value={range} onChange={setRange} className="w-full sm:w-44" />}
       />
 
@@ -128,7 +143,7 @@ export default function Dashboard() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {loading && !counts ? (
-          Array.from({ length: 5 }, (_, index) => <StatCardSkeleton key={index} />)
+          Array.from({ length: 6 }, (_, index) => <StatCardSkeleton key={index} />)
         ) : (
           <>
             <StatCard
@@ -162,22 +177,42 @@ export default function Dashboard() {
               }}
             />
             <StatCard
-              label="Active subscriptions"
-              value={formatNumber(DEMO_ACTIVE_SUBSCRIPTIONS)}
+              label="Active listing terms"
+              value={subscriptions ? formatNumber(subscriptions.landlordActive) : "—"}
+              note="Properties with time left on a term"
               icon={Wallet}
-              demo="subscriptions"
-              delta={{
-                value: DEMO_DELTAS.subscriptions,
-                note: "vs previous period",
-                demo: "subscriptions",
-              }}
             />
             <StatCard
               label={`Revenue · ${rangeLabel}`}
-              value={formatKesCompact(revenueTotal)}
+              value={revenueTotal === undefined ? "—" : formatKesCompact(revenueTotal)}
+              note={revenueTotal === undefined ? "Not available" : "Settled M-Pesa payments"}
               icon={CreditCard}
-              demo="revenue"
-              delta={{ value: DEMO_DELTAS.revenue, note: "vs previous period", demo: "revenue" }}
+            />
+            {/*
+              The other actionable figure. All-time rather than windowed on purpose — a
+              payment stuck at PENDING for three weeks is exactly the one worth chasing.
+            */}
+            <StatCard
+              label="Pending payments"
+              value={
+                payments ? (
+                  payments.pending > 0 ? (
+                    <Link to="/payments?status=PENDING" className="hover:underline">
+                      {formatNumber(payments.pending)}
+                    </Link>
+                  ) : (
+                    formatNumber(0)
+                  )
+                ) : (
+                  "—"
+                )
+              }
+              note={
+                payments && payments.pending > 0
+                  ? "Awaiting confirmation — reconcile to check"
+                  : "Nothing awaiting confirmation"
+              }
+              icon={Clock}
             />
           </>
         )}
@@ -196,46 +231,69 @@ export default function Dashboard() {
           />
         </Panel>
 
-        <Panel title="Subscription status" action={<DemoBadge feature="subscriptions" />}>
-          <DonutChart
-            slices={[
-              {
-                key: "active",
-                label: "Active",
-                value: DEMO_SUBSCRIPTION_MIX[0].count,
-                color: "var(--success)",
-              },
-              {
-                key: "expired",
-                label: "Expired",
-                value: DEMO_SUBSCRIPTION_MIX[1].count,
-                color: "var(--destructive)",
-              },
-              {
-                key: "cancelled",
-                label: "Cancelled",
-                value: DEMO_SUBSCRIPTION_MIX[2].count,
-                color: "var(--inactive)",
-              },
-            ]}
-            centreLabel="subscriptions"
-            className="sm:flex-col lg:flex-col"
-          />
+        {/*
+          Two slices, not three. There is no cancellation in Milestone 5 — a term either
+          has time left or it doesn't — and tenant passes are counted in people rather
+          than properties, so they go in the footer rather than sharing this denominator.
+        */}
+        <Panel
+          title="Listing terms"
+          description="One 30-day term per property"
+          footer={
+            subscriptions
+              ? `${formatNumber(subscriptions.tenantPassesLive)} tenants also hold a live browsing pass — counted separately, since a pass belongs to a person.`
+              : undefined
+          }
+        >
+          {!subscriptions ? (
+            <PanelSkeleton />
+          ) : (
+            <DonutChart
+              slices={[
+                {
+                  key: "active",
+                  label: "Active",
+                  value: subscriptions.landlordActive,
+                  color: "var(--success)",
+                },
+                {
+                  key: "lapsed",
+                  label: "Lapsed",
+                  value: subscriptions.landlordLapsed,
+                  color: "var(--destructive)",
+                },
+              ]}
+              centreLabel="terms"
+              className="sm:flex-col lg:flex-col"
+            />
+          )}
         </Panel>
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Panel
           title="Revenue trend"
-          description={`${formatKes(revenueTotal)} · ${rangeLabel}`}
-          action={<DemoBadge feature="revenue" />}
+          description={
+            revenueTotal === undefined
+              ? `Settled payments per day, ${rangeLabel}`
+              : `${formatKes(revenueTotal)} · ${rangeLabel}`
+          }
           className="lg:col-span-2"
         >
-          <BarChart
-            points={revenueTrend}
-            valuePrefix="KSh "
-            ariaLabel={`Sample daily revenue over the ${rangeLabel}`}
-          />
+          {extended.error ? (
+            <ErrorState error={extended.error} onRetry={extended.reload} />
+          ) : !revenuePoints ? (
+            <PanelSkeleton />
+          ) : (
+            <BarChart
+              points={revenuePoints.map((point) => ({
+                label: dateLabel(point.date, days),
+                value: point.amount,
+              }))}
+              valuePrefix="KSh "
+              ariaLabel={`Money settled per day over the ${rangeLabel}`}
+            />
+          )}
         </Panel>
 
         <Panel title="Recent activity" action={<DemoBadge feature="activityFeed" />}>
