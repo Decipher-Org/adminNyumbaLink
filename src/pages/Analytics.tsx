@@ -13,12 +13,11 @@ import {
   DEMO_ANALYTICS_DELTAS,
   DEMO_DEVICE_SPLIT,
   DEMO_FALLBACK_AREAS,
-  daysForRange,
   demoAnalyticsTotals,
   demoTopAreas,
   demoViewsTrend,
-  type RangeKey,
 } from "@/lib/demo/dashboard";
+import { daysForRange, type RangeKey } from "@/lib/series";
 import { formatCompact, formatNumber, formatPercent } from "@/lib/format";
 import { useAsync } from "@/lib/hooks/use-async";
 
