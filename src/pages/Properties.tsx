@@ -49,7 +49,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getProperty, listPropertiesWithLandlord } from "@/lib/api/properties";
+import { getProperty, searchPropertiesWithLandlord } from "@/lib/api/properties";
 import { PROPERTY_STATUSES, type PropertyStatus } from "@/lib/api/types";
 import { demoNonLiveProperties, demoPropertyViews } from "@/lib/demo/ops";
 import { downloadCsv } from "@/lib/export-csv";
@@ -74,17 +74,14 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
  * flag. There is no admin properties endpoint yet either. What this screen does
  * about that:
  *
- *  - **Live listings are real**, including the county/town/rent/bedroom filters,
- *    which all run server-side.
+ *  - **Live listings are real**, and use the Milestone 6 `/search` endpoint for
+ *    keyword, county/town/rent/bedroom filtering across the catalogue.
  *  - **The landlord column is real**, fetched per row from the detail endpoint,
  *    because the list serialiser has no landlord field. Bounded to the visible page.
  *  - **Non-live rows are samples**, marked individually in the table, and the
  *    status filter says as much. They only appear on page one, so paging through
  *    the real catalogue doesn't repeat them.
  *  - **Views are samples** — nothing increments a view counter yet.
- *  - **Title search is client-side** over the loaded page. There is no text search
- *    parameter until Milestone 6, and a search box that silently only covers ten
- *    rows would be worse than one that says so.
  */
 
 type StatusFilter = PropertyStatus | "all";
@@ -136,7 +133,7 @@ export default function Properties() {
   const [detail, setDetail] = useState<PropertyRow | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
-  const search = useDebouncedValue(searchInput.trim().toLowerCase());
+  const search = useDebouncedValue(searchInput.trim());
 
   // Live rows are only worth fetching when the filter could include them.
   const wantsLive = status === "all" || status === "ACTIVE";
@@ -148,9 +145,10 @@ export default function Properties() {
   const { data, error, loading, reload } = useAsync(
     async (signal) => {
       if (!wantsLive) return null;
-      return listPropertiesWithLandlord({
+      return searchPropertiesWithLandlord({
         page,
         limit: PAGE_SIZE,
+        q: search || undefined,
         county: filters.county.trim(),
         town: filters.town.trim(),
         estate: filters.estate.trim(),
@@ -160,7 +158,7 @@ export default function Properties() {
         signal,
       });
     },
-    [wantsLive, page, filters],
+    [wantsLive, page, filters, search],
   );
 
   const liveRows = useMemo<PropertyRow[]>(
@@ -213,15 +211,7 @@ export default function Properties() {
       }));
   }, [status, wantsLive, page]);
 
-  const rows = useMemo(() => {
-    const combined = [...liveRows, ...demoRows];
-    if (!search) return combined;
-    return combined.filter((row) =>
-      `${row.title} ${row.town} ${row.county} ${row.estate ?? ""} ${row.landlordName ?? ""}`
-        .toLowerCase()
-        .includes(search),
-    );
-  }, [liveRows, demoRows, search]);
+  const rows = useMemo(() => [...liveRows, ...demoRows], [liveRows, demoRows]);
 
   const pagination = data?.pagination;
   const activeFilterCount = Object.values(filters).filter((value) => value.trim() !== "").length;
@@ -289,7 +279,7 @@ export default function Properties() {
           <SearchInput
             value={searchInput}
             onChange={setSearchInput}
-            placeholder="Search this page by title, area or landlord"
+            placeholder="Search live listings by title or area"
             className="sm:min-w-64 sm:flex-1"
           />
 
@@ -317,12 +307,6 @@ export default function Properties() {
             ) : null}
           </Button>
 
-          {search ? (
-            <Pill tone="warning" className="shrink-0">
-              Searching this page only
-              <DemoBadge feature="fullTextSearch" className="bg-transparent px-0" />
-            </Pill>
-          ) : null}
         </Toolbar>
 
         {activeFilterCount > 0 ? (
@@ -366,7 +350,7 @@ export default function Properties() {
               }
               body={
                 search
-                  ? "Search only covers the rows already loaded on this page — try clearing it and paging instead."
+                  ? "Try a different phrase or widen the server-side filters."
                   : activeFilterCount > 0
                     ? "Try widening the county, rent or bedroom filters."
                     : "Listings appear here once an approved landlord publishes one."

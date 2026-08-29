@@ -26,6 +26,7 @@ import type { PropertyCard, PropertyDetail, PropertyLandlord } from "./types";
 export type ListPropertiesParams = {
   page?: number;
   limit?: number;
+  q?: string;
   county?: string;
   town?: string;
   estate?: string;
@@ -33,6 +34,12 @@ export type ListPropertiesParams = {
   maxPrice?: number;
   /** Matched as a substring of `unitType`, e.g. "2 Bedroom". */
   bedrooms?: string;
+  availableOnly?: boolean;
+  amenities?: string[];
+  lat?: number;
+  lng?: number;
+  radiusKm?: number;
+  sort?: "newest" | "price_asc" | "price_desc" | "distance";
   signal?: AbortSignal;
 };
 
@@ -40,8 +47,12 @@ export async function listProperties({ signal, ...query }: ListPropertiesParams 
   items: PropertyCard[];
   pagination: ApiPagination;
 }> {
+  const { amenities, ...primitiveQuery } = query;
   const { data, pagination } = await apiFetchPaged<PropertyCard[]>("/properties", {
-    query,
+    query: {
+      ...primitiveQuery,
+      amenities: amenities?.length ? amenities.join(",") : undefined,
+    },
     signal,
   });
   const items = Array.isArray(data) ? data : [];
@@ -86,6 +97,64 @@ export async function listPropertiesWithLandlord(
   params: ListPropertiesParams = {},
 ): Promise<{ items: AdminPropertyRow[]; pagination: ApiPagination }> {
   const { items, pagination } = await listProperties(params);
+
+  const enriched = await runWithConcurrency(
+    items.map((card) => async (): Promise<AdminPropertyRow> => {
+      try {
+        const detail = await getProperty(card.id, params.signal);
+        const units = detail.units ?? [];
+        return {
+          ...card,
+          landlord: detail.landlord,
+          totalUnits: units.length
+            ? units.reduce((sum, unit) => sum + (unit.totalUnits ?? 0), 0)
+            : null,
+          availableUnits: units.length
+            ? units.reduce((sum, unit) => sum + (unit.availableUnits ?? 0), 0)
+            : null,
+        };
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") throw error;
+        return { ...card, landlord: null, totalUnits: null, availableUnits: null };
+      }
+    }),
+  );
+
+  return { items: enriched, pagination };
+}
+
+/**
+ * Search properties with filters, geolocation, sorting, pagination, and caching.
+ * Uses the /search endpoint (Milestone 6) for full search capabilities.
+ */
+export async function searchProperties(
+  params: Omit<ListPropertiesParams, "signal"> & { signal?: AbortSignal } = {},
+): Promise<{ items: PropertyCard[]; pagination: ApiPagination }> {
+  const { amenities, signal, ...query } = params;
+  const { data, pagination } = await apiFetchPaged<PropertyCard[]>("/search", {
+    query: {
+      ...query,
+      amenities: amenities?.length ? amenities.join(",") : undefined,
+    },
+    signal,
+  });
+  const items = Array.isArray(data) ? data : [];
+  return {
+    items,
+    pagination: pagination ?? { page: 1, limit: items.length, total: items.length, totalPages: 1 },
+  };
+}
+
+/**
+ * Search properties with filters, geolocation, sorting, pagination, and caching,
+ * and enrich each result with landlord and unit counts.
+ * Uses the /search endpoint (Milestone 6) for the base search, then fetches
+ * each property's detail to get landlord information.
+ */
+export async function searchPropertiesWithLandlord(
+  params: Omit<ListPropertiesParams, "signal"> & { signal?: AbortSignal } = {},
+): Promise<{ items: AdminPropertyRow[]; pagination: ApiPagination }> {
+  const { items, pagination } = await searchProperties(params);
 
   const enriched = await runWithConcurrency(
     items.map((card) => async (): Promise<AdminPropertyRow> => {
