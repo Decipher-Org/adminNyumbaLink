@@ -1,15 +1,24 @@
-import { useMemo, useState } from "react";
-import { Bell, LogOut, Menu, MoreHorizontal, ShieldCheck } from "lucide-react";
+import { useState } from "react";
+import { Bell, LogOut, Menu, ShieldCheck } from "lucide-react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 
-import { ADMIN_NAV, STATUS_LEGEND, type NavItem } from "@/components/app/nav-config";
+import {
+  ADMIN_NAV,
+  STATUS_LEGEND,
+  type NavItem,
+} from "@/components/app/nav-config";
 import { Logo, LogoMark } from "@/components/brand/Logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { demoNotifications } from "@/lib/demo/ops";
+import { useNotifications } from "@/lib/notifications/NotificationProvider";
 import { initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -78,7 +87,11 @@ function SidebarLink({
     >
       <Icon className="size-4.5 shrink-0" />
       <span className="truncate">{label}</span>
-      {badge > 0 ? <NavBadge count={badge} /> : demo ? <DemoDot className="ml-auto" /> : null}
+      {badge > 0 ? (
+        <NavBadge count={badge} />
+      ) : demo ? (
+        <DemoDot className="ml-auto" />
+      ) : null}
     </NavLink>
   );
 }
@@ -93,7 +106,9 @@ function OperatorCard({ name, email }: { name: string; email: string }) {
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0">
-        <p className="truncate text-body-sm font-semibold text-sidebar-foreground">{name}</p>
+        <p className="truncate text-body-sm font-semibold text-sidebar-foreground">
+          {name}
+        </p>
         <p className="flex items-center gap-1 truncate text-caption text-sidebar-muted">
           <ShieldCheck aria-hidden="true" className="size-3 shrink-0" />
           Administrator
@@ -107,11 +122,19 @@ function OperatorCard({ name, email }: { name: string; email: string }) {
 function StatusLegend() {
   return (
     <div className="rounded-xl border border-sidebar-border px-3 py-2.5">
-      <p className="text-caption font-semibold text-sidebar-muted uppercase">Status key</p>
+      <p className="text-caption font-semibold text-sidebar-muted uppercase">
+        Status key
+      </p>
       <ul className="mt-2 grid grid-cols-2 gap-1.5">
         {STATUS_LEGEND.map((entry) => (
-          <li key={entry.label} className="flex items-center gap-2 text-caption text-sidebar-muted">
-            <span aria-hidden="true" className={cn("size-2 rounded-full", entry.className)} />
+          <li
+            key={entry.label}
+            className="flex items-center gap-2 text-caption text-sidebar-muted"
+          >
+            <span
+              aria-hidden="true"
+              className={cn("size-2 rounded-full", entry.className)}
+            />
             {entry.label}
           </li>
         ))}
@@ -120,18 +143,25 @@ function StatusLegend() {
   );
 }
 
-/**
- * The four-point band under every screen, from the design sheet's footer.
- *
- * Kept as static copy rather than dressed up as live metrics — it is a statement
- * about the product, and turning it into numbers would be inventing four more.
- */
+/** The four-point band under every screen, from the design sheet's footer. */
 function FooterBand() {
   const points = [
-    { title: "Centralised management", body: "Users, landlords and listings in one console." },
-    { title: "Secure & reliable", body: "Every action is behind an administrator session." },
-    { title: "Real-time insights", body: "Counts read straight from the live database." },
-    { title: "Grow your platform", body: "Approve landlords fast to keep supply moving." },
+    {
+      title: "Centralised management",
+      body: "Users, landlords and listings in one console.",
+    },
+    {
+      title: "Secure & reliable",
+      body: "Every action is behind an administrator session.",
+    },
+    {
+      title: "Real-time insights",
+      body: "Counts read straight from the live database.",
+    },
+    {
+      title: "Grow your platform",
+      body: "Approve landlords fast to keep supply moving.",
+    },
   ];
 
   return (
@@ -139,8 +169,12 @@ function FooterBand() {
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {points.map((point) => (
           <li key={point.title}>
-            <p className="text-body-sm font-semibold text-foreground">{point.title}</p>
-            <p className="mt-0.5 text-caption text-muted-foreground">{point.body}</p>
+            <p className="text-body-sm font-semibold text-foreground">
+              {point.title}
+            </p>
+            <p className="mt-0.5 text-caption text-muted-foreground">
+              {point.body}
+            </p>
           </li>
         ))}
       </ul>
@@ -153,21 +187,13 @@ function FooterBand() {
 
 export function AdminShell() {
   const { user, signOut } = useAuth();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  /**
-   * The sidebar badge counts unread notifications from the demo module rather than
-   * hardcoding the design's "8", so the number and the list on the Notifications
-   * screen cannot disagree. It becomes real when Milestone 7 lands.
-   */
-  const unreadCount = useMemo(
-    () => demoNotifications().filter((notification) => !notification.read).length,
-    [],
-  );
-  const badges: Record<string, number> = { "/notifications": unreadCount };
-
-  const tabs = ADMIN_NAV.filter((item) => item.primary).slice(0, 4);
+  const badges: Record<string, number> = {
+    "/notifications": unreadCount,
+  };
 
   async function handleSignOut() {
     await signOut();
@@ -192,9 +218,16 @@ export function AdminShell() {
             <OperatorCard name={name} email={email} />
           </div>
 
-          <nav aria-label="Main" className="mt-4 flex flex-1 flex-col gap-1 overflow-y-auto px-3">
+          <nav
+            aria-label="Main"
+            className="mt-4 flex flex-1 flex-col gap-1 overflow-y-auto px-3"
+          >
             {ADMIN_NAV.map((item) => (
-              <SidebarLink key={item.to} item={item} badge={badges[item.to] ?? 0} />
+              <SidebarLink
+                key={item.to}
+                item={item}
+                badge={badges[item.to] ?? 0}
+              />
             ))}
           </nav>
 
@@ -235,7 +268,10 @@ export function AdminShell() {
                 <div className="px-3">
                   <OperatorCard name={name} email={email} />
                 </div>
-                <nav aria-label="All sections" className="mt-4 flex flex-col gap-1 px-3">
+                <nav
+                  aria-label="All sections"
+                  className="mt-4 flex flex-col gap-1 px-3"
+                >
                   {ADMIN_NAV.map((item) => (
                     <SidebarLink
                       key={item.to}
@@ -270,23 +306,29 @@ export function AdminShell() {
                 className="relative"
                 onClick={() => navigate("/notifications")}
                 aria-label={
-                  unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
+                  unreadCount > 0
+                    ? `Notifications, ${unreadCount} unread`
+                    : "Notifications"
                 }
               >
-                <Bell />
+                <Bell className="size-5" />
                 {unreadCount > 0 ? (
                   <span
                     aria-hidden="true"
-                    className="absolute top-1.5 right-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] leading-none font-bold text-white tabular-nums"
+                    className="absolute -top-0.5 -right-0.5 flex size-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground"
                   >
-                    {unreadCount > 9 ? "9+" : unreadCount}
+                    {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 ) : null}
               </Button>
 
               <div className="hidden text-right sm:block">
-                <p className="text-body-sm font-semibold text-foreground">{name}</p>
-                <p className="text-caption text-muted-foreground">Administrator</p>
+                <p className="text-body-sm font-semibold text-foreground">
+                  {name}
+                </p>
+                <p className="text-caption text-muted-foreground">
+                  Administrator
+                </p>
               </div>
               <Avatar className="size-9">
                 <AvatarFallback className="bg-secondary text-body-sm font-semibold text-secondary-foreground">
@@ -310,40 +352,33 @@ export function AdminShell() {
           className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
         >
           <ul className="flex">
-            {tabs.map(({ to, label, icon: Icon, demo }) => (
-              <li key={to} className="flex-1">
-                <NavLink
-                  to={to}
-                  end={to === "/"}
-                  className={({ isActive }) =>
-                    cn(
-                      "relative flex min-h-14 flex-col items-center justify-center gap-1 px-1 py-2 text-caption font-medium transition-colors",
-                      isActive ? "text-primary" : "text-muted-foreground",
-                    )
-                  }
-                >
-                  <Icon className="size-5" />
-                  <span className="truncate">{label}</span>
-                  {demo ? <DemoDot className="absolute top-2 right-1/4" /> : null}
-                </NavLink>
-              </li>
-            ))}
-            <li className="flex-1">
-              <button
-                type="button"
-                onClick={() => setSheetOpen(true)}
-                className="relative flex min-h-14 w-full flex-col items-center justify-center gap-1 px-1 py-2 text-caption font-medium text-muted-foreground"
-              >
-                <MoreHorizontal className="size-5" />
-                <span>More</span>
-                {unreadCount > 0 ? (
-                  <span
-                    aria-hidden="true"
-                    className="absolute top-2 right-1/4 size-1.5 rounded-full bg-destructive"
-                  />
-                ) : null}
-              </button>
-            </li>
+            {ADMIN_NAV.filter((item) => item.primary)
+              .slice(0, 4)
+              .map(({ to, label, icon: Icon, demo }) => (
+                <li key={to} className="flex-1">
+                  <NavLink
+                    to={to}
+                    end={to === "/"}
+                    className={({ isActive }) =>
+                      cn(
+                        "relative flex min-h-14 flex-col items-center justify-center gap-1 px-1 py-2 text-caption font-medium transition-colors",
+                        isActive ? "text-primary" : "text-muted-foreground",
+                      )
+                    }
+                  >
+                    <Icon className="size-5" />
+                    <span className="truncate">{label}</span>
+                    {badges[to] > 0 ? (
+                      <span
+                        aria-hidden="true"
+                        className="absolute top-2 right-1/4 size-1.5 rounded-full bg-destructive"
+                      />
+                    ) : demo ? (
+                      <DemoDot className="absolute top-2 right-1/4" />
+                    ) : null}
+                  </NavLink>
+                </li>
+              ))}
           </ul>
         </nav>
       </div>

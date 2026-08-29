@@ -30,7 +30,6 @@ export type DemoFeatureId =
   | "views"
   | "analytics"
   | "reports"
-  | "notifications"
   | "landlordDocuments"
   | "rejections"
   | "bulkActions"
@@ -79,11 +78,6 @@ export const DEMO_FEATURES: Record<DemoFeatureId, DemoFeature> = {
     label: "Reported listings",
     milestone: "Milestone 10",
     note: "Sample reports. Tenants have no way to report a listing yet and there is nowhere to store one.",
-  },
-  notifications: {
-    label: "Notifications",
-    milestone: "Milestone 7",
-    note: "Sample alerts. No notification is generated, stored or delivered.",
   },
   landlordDocuments: {
     label: "Verification documents",

@@ -54,7 +54,13 @@ export const ADMIN_NAV: NavItem[] = [
     primary: true,
     hint: "Approve new landlords",
   },
-  { to: "/users", label: "Users", icon: Users, primary: true, hint: "Roles and suspensions" },
+  {
+    to: "/users",
+    label: "Users",
+    icon: Users,
+    primary: true,
+    hint: "Roles and suspensions",
+  },
   {
     to: "/properties",
     label: "Properties",
@@ -74,7 +80,13 @@ export const ADMIN_NAV: NavItem[] = [
     icon: Wallet,
     hint: "Listing terms and expiry",
   },
-  { to: "/reports", label: "Reports", icon: Flag, demo: "reports", hint: "Reported listings" },
+  {
+    to: "/reports",
+    label: "Reports",
+    icon: Flag,
+    demo: "reports",
+    hint: "Reported listings",
+  },
   {
     to: "/analytics",
     label: "Analytics",
@@ -86,7 +98,6 @@ export const ADMIN_NAV: NavItem[] = [
     to: "/notifications",
     label: "Notifications",
     icon: Bell,
-    demo: "notifications",
     hint: "Platform alerts",
   },
   {

@@ -387,3 +387,28 @@ export type AdminSubscription = {
   expiresAt: string;
   grants: SubscriptionGrant[];
 };
+
+// ---------------------------------------------------------------- notifications
+export type NotificationType =
+  | "SUBSCRIPTION_EXPIRING"
+  | "PAYMENT_SUCCESS"
+  | "PROPERTY_HIDDEN"
+  | "PROPERTY_VIEWED"
+  | "NEW_MATCHING_PROPERTY"
+  | "SYSTEM_ALERT";
+
+/**
+ * `toNotificationDto` in `src/services/notifications.js`. The `data` bag is
+ * opaque JSON the backend stores for deep-link context (e.g. `propertyId`);
+ * screens that need a specific key narrow it themselves.
+ */
+export type Notification = {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+  isRead: boolean;
+  readAt?: string;
+  createdAt: string;
+};
