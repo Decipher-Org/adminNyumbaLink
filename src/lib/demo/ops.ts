@@ -1,7 +1,7 @@
 /**
  * Sample data for the operational surfaces with no backend behind them:
- * verification documents, rejection history, reported listings, notifications,
- * and the non-live property rows an admin cannot fetch.
+ * verification documents, rejection history, reported listings, and the
+ * non-live property rows an admin cannot fetch.
  *
  * Each of these is registered in `lib/demo/registry.ts` with the reason it is
  * fake. Three of them are fake for a stronger reason than "the endpoint isn't
@@ -18,7 +18,7 @@
  */
 
 import type { PropertyStatus } from "@/lib/api/types";
-import { daysAgo, minutesAgo, seededBetween, seededPick } from "@/lib/demo/seed";
+import { daysAgo, seededBetween, seededPick } from "@/lib/demo/seed";
 
 // ------------------------------------------------------ verification documents
 
@@ -32,7 +32,11 @@ export type DemoDocumentSet = {
   items: DemoDocument[];
 };
 
-const REQUIRED_DOCUMENTS = ["National ID (front)", "National ID (back)", "Business permit"];
+const REQUIRED_DOCUMENTS = [
+  "National ID (front)",
+  "National ID (back)",
+  "Business permit",
+];
 
 /**
  * A document set for one landlord, keyed off their id so the queue row and the
@@ -42,7 +46,8 @@ const REQUIRED_DOCUMENTS = ["National ID (front)", "National ID (back)", "Busine
 export function demoDocuments(landlordId: string): DemoDocumentSet {
   const items = REQUIRED_DOCUMENTS.map((name, index) => {
     const roll = seededBetween(`doc:${landlordId}:${index}`, 0, 9);
-    const status: DocumentStatus = roll >= 8 ? "MISSING" : roll === 7 ? "UNREADABLE" : "RECEIVED";
+    const status: DocumentStatus =
+      roll >= 8 ? "MISSING" : roll === 7 ? "UNREADABLE" : "RECEIVED";
     return { name, status };
   });
 
@@ -208,108 +213,6 @@ export function demoReports(): DemoReport[] {
   return cachedReports;
 }
 
-// ------------------------------------------------------------ notifications
-
-export type NotificationKind = "approval" | "report" | "payment" | "system" | "user";
-
-export type DemoNotification = {
-  id: string;
-  kind: NotificationKind;
-  title: string;
-  body: string;
-  at: string;
-  read: boolean;
-};
-
-/**
- * Eight unread, which is the count the sidebar badge shows. The badge reads its
- * number from this list rather than hardcoding one, so the two can never disagree.
- */
-export function demoNotifications(): DemoNotification[] {
-  return [
-    {
-      id: "n1",
-      kind: "approval",
-      title: "3 landlords awaiting approval",
-      body: "Grace Wanjiku, Ibrahim Abdi and Ruth Moraa submitted details today.",
-      at: minutesAgo(6),
-      read: false,
-    },
-    {
-      id: "n2",
-      kind: "report",
-      title: "New listing report",
-      body: "Studio in Ruaka flagged as misleading photos.",
-      at: minutesAgo(41),
-      read: false,
-    },
-    {
-      id: "n3",
-      kind: "payment",
-      title: "Payment failed",
-      body: "Otieno Properties · KSh 4,500 · M-Pesa timeout.",
-      at: minutesAgo(96),
-      read: false,
-    },
-    {
-      id: "n4",
-      kind: "user",
-      title: "Suspension appeal",
-      body: "brian.k@example.com replied to their suspension notice.",
-      at: minutesAgo(150),
-      read: false,
-    },
-    {
-      id: "n5",
-      kind: "system",
-      title: "Storage at 72%",
-      body: "Property image uploads are using 72% of the configured volume.",
-      at: minutesAgo(320),
-      read: false,
-    },
-    {
-      id: "n6",
-      kind: "approval",
-      title: "Documents re-submitted",
-      body: "Sunrise Homes Ltd uploaded a new business permit.",
-      at: minutesAgo(500),
-      read: false,
-    },
-    {
-      id: "n7",
-      kind: "payment",
-      title: "12 subscriptions expire this week",
-      body: "Renewal reminders are queued for Thursday.",
-      at: minutesAgo(720),
-      read: false,
-    },
-    {
-      id: "n8",
-      kind: "report",
-      title: "Report escalated",
-      body: "Suspected scam listing in Nyali needs a second reviewer.",
-      at: minutesAgo(900),
-      read: false,
-    },
-    {
-      id: "n9",
-      kind: "system",
-      title: "Nightly backup completed",
-      body: "Database snapshot finished in 4m 12s.",
-      at: minutesAgo(1_380),
-      read: true,
-    },
-    {
-      id: "n10",
-      kind: "user",
-      title: "Role changed",
-      body: "faith.n@example.com was promoted to landlord.",
-      at: minutesAgo(2_100),
-      read: true,
-    },
-  ];
-}
-
 // ------------------------------------------------------- non-live properties
 
 export type DemoPropertyRow = {
@@ -334,13 +237,48 @@ export type DemoPropertyRow = {
  * be mistaken for a real listing.
  */
 export function demoNonLiveProperties(): DemoPropertyRow[] {
-  const rows: { title: string; town: string; county: string; status: PropertyStatus }[] = [
-    { title: "4 Bedroom Villa", town: "Karen", county: "Nairobi", status: "DRAFT" },
-    { title: "Bedsitter Block", town: "Kahawa", county: "Nairobi", status: "DRAFT" },
-    { title: "2 Bedroom Apartment", town: "Nyali", county: "Mombasa", status: "HIDDEN" },
-    { title: "Studio Apartment", town: "Milimani", county: "Kisumu", status: "HIDDEN" },
-    { title: "1 Bedroom Apartment", town: "Ruaka", county: "Kiambu", status: "ARCHIVED" },
-    { title: "3 Bedroom Maisonette", town: "Syokimau", county: "Machakos", status: "ARCHIVED" },
+  const rows: {
+    title: string;
+    town: string;
+    county: string;
+    status: PropertyStatus;
+  }[] = [
+    {
+      title: "4 Bedroom Villa",
+      town: "Karen",
+      county: "Nairobi",
+      status: "DRAFT",
+    },
+    {
+      title: "Bedsitter Block",
+      town: "Kahawa",
+      county: "Nairobi",
+      status: "DRAFT",
+    },
+    {
+      title: "2 Bedroom Apartment",
+      town: "Nyali",
+      county: "Mombasa",
+      status: "HIDDEN",
+    },
+    {
+      title: "Studio Apartment",
+      town: "Milimani",
+      county: "Kisumu",
+      status: "HIDDEN",
+    },
+    {
+      title: "1 Bedroom Apartment",
+      town: "Ruaka",
+      county: "Kiambu",
+      status: "ARCHIVED",
+    },
+    {
+      title: "3 Bedroom Maisonette",
+      town: "Syokimau",
+      county: "Machakos",
+      status: "ARCHIVED",
+    },
   ];
 
   return rows.map((row, index) => ({

@@ -4,6 +4,7 @@ import { AdminShell } from "@/components/app/AdminShell";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { GuestOnlyRoute, ProtectedRoute } from "@/lib/auth/ProtectedRoute";
+import { NotificationProvider } from "@/lib/notifications/NotificationProvider";
 import Analytics from "@/pages/Analytics";
 import Dashboard from "@/pages/Dashboard";
 import Landlords from "@/pages/Landlords";
@@ -29,29 +30,31 @@ import Users from "@/pages/Users";
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<GuestOnlyRoute />}>
-            <Route path="/login" element={<Login />} />
-          </Route>
-
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AdminShell />}>
-              <Route index element={<Dashboard />} />
-              <Route path="landlords" element={<Landlords />} />
-              <Route path="users" element={<Users />} />
-              <Route path="properties" element={<Properties />} />
-              <Route path="payments" element={<Payments />} />
-              <Route path="subscriptions" element={<Subscriptions />} />
-              <Route path="reports" element={<Reports />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="notifications" element={<Notifications />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="*" element={<NotFound />} />
+      <NotificationProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<GuestOnlyRoute />}>
+              <Route path="/login" element={<Login />} />
             </Route>
-          </Route>
-        </Routes>
-      </BrowserRouter>
+
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AdminShell />}>
+                <Route index element={<Dashboard />} />
+                <Route path="landlords" element={<Landlords />} />
+                <Route path="users" element={<Users />} />
+                <Route path="properties" element={<Properties />} />
+                <Route path="payments" element={<Payments />} />
+                <Route path="subscriptions" element={<Subscriptions />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="analytics" element={<Analytics />} />
+                <Route path="notifications" element={<Notifications />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </NotificationProvider>
 
       {/* Bottom-centre on a phone would collide with the tab bar, so toasts stay
           top-right on every breakpoint. */}
