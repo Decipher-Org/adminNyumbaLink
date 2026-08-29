@@ -3,11 +3,8 @@
 The admin console for NyumbaLink — React 19 + Vite + Tailwind 4 + shadcn/ui, talking
 to `propertyHubBackend`.
 
-The backend is complete through **Milestone 3** (auth, users/roles, landlord
-profiles and approval, properties and units). Milestones 4–10 — payments,
-subscriptions, search, notifications, reviews/favourites, jobs and the admin
-analytics endpoints — are not built. This console covers the whole design anyway:
-what exists is wired to the real API, and what doesn't is a labelled demo.
+The console covers the whole design: implemented backend capabilities are wired
+to the real API, while unavailable capabilities are explicitly labelled as demos.
 
 **Every invented number is badged.** An operator suspends accounts and approves
 landlords on the strength of what this screen tells them, so a fake figure that
@@ -142,7 +139,7 @@ Ten screens. Roughly half the console runs on live data.
 | **Subscriptions** | Landlord count                                                                               | Plans, renewals, status mix (backend returns a constant `"PENDING"`)        |
 | **Reports**       | —                                                                                            | Everything (nothing can report a listing and nowhere stores one)            |
 | **Analytics**     | Which areas rank, and their listing counts, grouped from `GET /properties`                   | Views, visitors, inquiries, favourites, device split                        |
-| **Notifications** | —                                                                                            | Everything (Milestone 7); read state is local to the tab                    |
+| **Notifications** | Real notifications from backend API with read/unread states, server-side filtering and pagination, plus browser push notifications | —                                                               |
 | **Settings**      | Your name and phone (`PATCH /users/me`), your password (`PATCH /users/me/password`), sign out | Platform toggles — shown read-only with the reason, not as a fake form      |
 
 Three of those demos are fake for a harder reason than a missing endpoint: there
