@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertCircle,
   Banknote,
@@ -148,12 +148,13 @@ export default function Notifications() {
     setPushState(currentPushState());
   }, []);
 
-  // Fetch notifications with server-side unreadOnly and pagination
+  // Fetch notifications with server-side unreadOnly, type and pagination
   const { data, error, loading, reload, setData } = useAsync(
     (signal) =>
       notificationsApi.listNotifications(
         {
           unreadOnly: filter === "unread",
+          type: filter === "all" || filter === "unread" ? undefined : filter,
           page,
           limit,
         },
@@ -164,12 +165,6 @@ export default function Notifications() {
 
   const items = data?.items ?? [];
   const pagination = data?.pagination;
-
-  // Client-side filter when a specific notification type is selected
-  const visible = useMemo(() => {
-    if (filter === "all" || filter === "unread") return items;
-    return items.filter((item) => item.type === filter);
-  }, [items, filter]);
 
   async function handleEnablePush() {
     setPushLoading(true);
@@ -325,7 +320,7 @@ export default function Notifications() {
         </div>
       ) : error ? (
         <ErrorState error={error} onRetry={reload} className="mt-4" />
-      ) : visible.length === 0 ? (
+      ) : items.length === 0 ? (
         <div className="mt-4">
           <EmptyState
             icon={BellOff}
@@ -342,7 +337,7 @@ export default function Notifications() {
       ) : (
         <div className="mt-4 rounded-xl border border-border bg-card">
           <ul className="divide-y divide-border">
-            {visible.map((notification) => {
+            {items.map((notification) => {
               const meta =
                 KIND_META[notification.type] ?? KIND_META.SYSTEM_ALERT;
               const Icon = meta.icon;

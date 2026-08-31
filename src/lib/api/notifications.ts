@@ -7,10 +7,16 @@
  */
 
 import { apiFetch, apiFetchPaged, type ApiPagination } from "./client";
-import type { Notification } from "./types";
+import type { Notification, NotificationType } from "./types";
 
 export type NotificationListParams = {
   unreadOnly?: boolean;
+  /**
+   * Narrow to one type, server-side. Applied to the count as well as the page, so
+   * the pagination footer describes the filtered set — which is why this is a query
+   * parameter rather than a `.filter()` over whatever page happened to be fetched.
+   */
+  type?: NotificationType;
   page?: number;
   /** Defaults to 20 server-side, capped at 100. */
   limit?: number;
@@ -26,6 +32,7 @@ export async function listNotifications(
   const { data, pagination } = await apiFetchPaged<Notification[]>("/notifications", {
     query: {
       unreadOnly: params.unreadOnly ? "true" : undefined,
+      type: params.type,
       page: params.page,
       limit: params.limit,
     },
