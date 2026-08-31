@@ -30,8 +30,11 @@ import Users from "@/pages/Users";
 export default function App() {
   return (
     <AuthProvider>
-      <NotificationProvider>
-        <BrowserRouter>
+      {/* NotificationProvider sits inside the router, not outside it: a click on an OS
+          notification is routed by the provider via `useNavigate`, which needs a router
+          above it. */}
+      <BrowserRouter>
+        <NotificationProvider>
           <Routes>
             <Route element={<GuestOnlyRoute />}>
               <Route path="/login" element={<Login />} />
@@ -53,8 +56,8 @@ export default function App() {
               </Route>
             </Route>
           </Routes>
-        </BrowserRouter>
-      </NotificationProvider>
+        </NotificationProvider>
+      </BrowserRouter>
 
       {/* Bottom-centre on a phone would collide with the tab bar, so toasts stay
           top-right on every breakpoint. */}

@@ -31,6 +31,7 @@ import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import type { AuthUser } from "@/lib/api/types";
 import { clearSession, getToken, SESSION_CLEARED_EVENT, setToken } from "@/lib/auth/session";
+import { disablePushNotifications } from "@/lib/notifications/push";
 
 type AuthState = {
   /** null once resolved and signed out; never undefined after `loading` clears. */
@@ -140,6 +141,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     requestId.current++;
+    // Withdraw the browser's push token first, while the session can still authenticate
+    // the call. Left behind, it stays owned by this admin and blocks the next one to
+    // sign in on this machine from registering at all.
+    await disablePushNotifications();
     try {
       await authApi.signOut();
     } catch {
