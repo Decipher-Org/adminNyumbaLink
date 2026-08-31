@@ -1,18 +1,23 @@
 /**
  * Notification state for the admin console: the unread count displayed in the shell bell and sidebar.
  *
- * The provider polls `GET /notifications?unreadOnly=true&limit=1` every 60
- * seconds to refresh the badge. This is a single lightweight request that
- * returns one row and a `pagination.total` — far cheaper than fetching the full
- * notification list.
+ * Two things keep the badge current.
  *
- * Polling is used because the backend has no WebSocket support. 60 seconds is a
- * reasonable interval: notifications here are not time-critical (payment
- * receipts, property approvals). The full notification page always fetches the
- * latest on mount regardless of the poll.
+ * **The service worker**, which posts every push straight to this provider — so a
+ * notification that arrives while the console is open moves the badge immediately, and
+ * clicking an OS notification routes the existing tab instead of reloading it. See
+ * `public/firebase-messaging-sw.js` for the message contract; the acknowledgement the
+ * worker waits for is sent by `lib/notifications/push.ts` on this provider's behalf.
  *
- * The provider checks `user !== null` before polling, so it is safe to mount at
- * the root without gating on auth — it simply idles for guests.
+ * **A 60-second poll** of `GET /notifications?unreadOnly=true&limit=1`, which is the
+ * floor when push is unavailable — permission denied, an unconfigured environment, or a
+ * notification the backend created without a push channel. It is one lightweight request
+ * returning a single row and a `pagination.total`, far cheaper than the full list. The
+ * backend has no WebSocket support, and these notifications are not time-critical to the
+ * second, so a minute is a reasonable interval.
+ *
+ * The provider checks `user !== null` before polling, so it is safe to mount at the root
+ * without gating on auth — it simply idles for guests.
  */
 
 import {
@@ -24,12 +29,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import { getUnreadCount } from "@/lib/api/notifications";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import {
   currentPushState,
   enablePushNotifications,
+  onPushMessage,
 } from "@/lib/notifications/push";
 
 const POLL_INTERVAL_MS = 60_000;
@@ -47,6 +55,7 @@ const NotificationContext = createContext<NotificationState | undefined>(
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -92,6 +101,48 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       // The Notifications page exposes a retryable explanation when registration fails.
     });
   }, [user]);
+
+  /**
+   * Live push handling.
+   *
+   * Subscribed regardless of `user` so a click on a notification still routes after the
+   * session has lapsed — `ProtectedRoute` sends them to the login screen and back,
+   * which beats a click that appears to do nothing.
+   */
+  useEffect(() => {
+    return onPushMessage((message) => {
+      switch (message.type) {
+        case "PUSH_RECEIVED": {
+          void fetchCount();
+          // The worker only suppresses the OS notification for a *visible* tab, so this
+          // toast is the visible tab's replacement for it — and would be talking to an
+          // empty room in any other tab.
+          if (document.visibilityState !== "visible") return;
+          toast(message.title, {
+            description: message.body,
+            action: {
+              label: "View",
+              onClick: () => navigate(message.path),
+            },
+          });
+          return;
+        }
+
+        case "NOTIFICATION_CLICK":
+          navigate(message.path);
+          return;
+
+        case "PUSH_SUBSCRIPTION_CHANGED":
+          // The browser retired this subscription, so the token the backend holds is
+          // dead. Mint a replacement while a tab is open to do it in.
+          if (!user || currentPushState() !== "enabled") return;
+          void enablePushNotifications().catch(() => {
+            // Next load retries via the effect above.
+          });
+          return;
+      }
+    });
+  }, [fetchCount, navigate, user]);
 
   const refreshUnreadCount = useCallback(() => {
     void fetchCount();
