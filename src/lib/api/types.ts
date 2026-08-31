@@ -389,11 +389,26 @@ export type AdminSubscription = {
 };
 
 // ---------------------------------------------------------------- notifications
+
+/**
+ * `NOTIFICATION_TYPES` in `src/services/notifications.js`.
+ *
+ * The `ADMIN_*` types are the ones this console actually receives day to day; the rest
+ * are landlord- and tenant-facing and appear here only because an admin account can hold
+ * any notification the backend writes (a payment an admin made, say). `KIND_META` in
+ * `pages/Notifications.tsx` must cover every member.
+ */
 export type NotificationType =
+  | "ADMIN_LANDLORD_PENDING"
+  | "ADMIN_PAYMENT_RECEIVED"
+  | "ADMIN_PAYMENT_FAILED"
+  | "ADMIN_DUPLICATE_RECEIPT"
+  | "ADMIN_PROPERTY_PUBLISHED"
   | "SUBSCRIPTION_EXPIRING"
   | "PAYMENT_SUCCESS"
   | "PROPERTY_HIDDEN"
   | "PROPERTY_VIEWED"
+  | "PROPERTY_REVIEWED"
   | "NEW_MATCHING_PROPERTY"
   | "SYSTEM_ALERT";
 

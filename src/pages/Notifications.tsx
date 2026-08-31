@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
+  Banknote,
   Bell,
   BellOff,
+  Building2,
   Check,
   CheckCheck,
   CreditCard,
@@ -12,6 +14,10 @@ import {
   Loader2,
   ShieldAlert,
   Sparkles,
+  Star,
+  TriangleAlert,
+  UserCheck,
+  XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -42,7 +48,38 @@ import { cn } from "@/lib/utils";
 
 type IconConfig = { label: string; icon: LucideIcon; className: string };
 
+/**
+ * Presentation for every type the backend can write. Exhaustive over
+ * `NotificationType` on purpose — a type with no entry here used to fall back to the
+ * generic "System Alert" chrome, which is how `PROPERTY_REVIEWED` quietly rendered as
+ * something it wasn't.
+ */
 const KIND_META: Record<NotificationType, IconConfig> = {
+  ADMIN_LANDLORD_PENDING: {
+    label: "Verification",
+    icon: UserCheck,
+    className: "bg-warning-soft text-warning-strong",
+  },
+  ADMIN_PAYMENT_RECEIVED: {
+    label: "Revenue",
+    icon: Banknote,
+    className: "bg-success-soft text-success-strong",
+  },
+  ADMIN_PAYMENT_FAILED: {
+    label: "Failed Payment",
+    icon: XCircle,
+    className: "bg-destructive-soft text-destructive-strong",
+  },
+  ADMIN_DUPLICATE_RECEIPT: {
+    label: "Duplicate Receipt",
+    icon: TriangleAlert,
+    className: "bg-destructive-soft text-destructive-strong",
+  },
+  ADMIN_PROPERTY_PUBLISHED: {
+    label: "New Listing",
+    icon: Building2,
+    className: "bg-info-soft text-info-strong",
+  },
   PAYMENT_SUCCESS: {
     label: "Payment",
     icon: CreditCard,
@@ -63,6 +100,11 @@ const KIND_META: Record<NotificationType, IconConfig> = {
     icon: Eye,
     className: "bg-info-soft text-info-strong",
   },
+  PROPERTY_REVIEWED: {
+    label: "Review",
+    icon: Star,
+    className: "bg-info-soft text-info-strong",
+  },
   NEW_MATCHING_PROPERTY: {
     label: "New Match",
     icon: Sparkles,
@@ -74,6 +116,20 @@ const KIND_META: Record<NotificationType, IconConfig> = {
     className: "bg-secondary text-primary",
   },
 };
+
+/**
+ * Which types get their own filter tab. Twelve tabs would scroll off the header, and the
+ * landlord/tenant types are near-empty on an admin account — they stay reachable through
+ * "All". Ordered by how often an operator reaches for them.
+ */
+const FILTER_KINDS: NotificationType[] = [
+  "ADMIN_LANDLORD_PENDING",
+  "ADMIN_PAYMENT_FAILED",
+  "ADMIN_DUPLICATE_RECEIPT",
+  "ADMIN_PAYMENT_RECEIVED",
+  "ADMIN_PROPERTY_PUBLISHED",
+  "SYSTEM_ALERT",
+];
 
 type Filter = "all" | "unread" | NotificationType;
 
@@ -253,7 +309,7 @@ export default function Notifications() {
                 </span>
               ) : null}
             </TabsTrigger>
-            {(Object.keys(KIND_META) as NotificationType[]).map((kind) => (
+            {FILTER_KINDS.map((kind) => (
               <TabsTrigger key={kind} value={kind}>
                 {KIND_META[kind].label}
               </TabsTrigger>
@@ -392,13 +448,19 @@ export default function Notifications() {
       <div className="mt-6 rounded-xl border border-border bg-surface p-4">
         <h2 className="flex items-center gap-2 text-body font-semibold text-foreground">
           <Bell aria-hidden="true" className="size-4" />
-          Milestone 7 Notifications
+          What lands here
         </h2>
         <p className="mt-1.5 text-body-sm text-muted-foreground">
-          Notifications are generated for payment settlements, subscription
-          expiries, hidden listings, and tenant listing views. The console polls
-          for updates, supports browser push delivery, and keeps read state in
-          sync with the backend.
+          Every administrator is notified when a landlord submits a profile for
+          verification, when a payment settles or fails, when a duplicate M-Pesa receipt
+          is rejected, and when a listing is published. Verification, failed payments and
+          duplicate receipts also arrive as browser alerts; revenue and new listings are
+          in-app only, because they are a running commentary rather than something to
+          act on.
+        </p>
+        <p className="mt-1.5 text-body-sm text-muted-foreground">
+          With browser alerts enabled, an arriving notification updates this console
+          immediately. Otherwise the unread count refreshes once a minute.
         </p>
       </div>
     </>
