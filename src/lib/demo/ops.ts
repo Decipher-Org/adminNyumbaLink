@@ -75,7 +75,7 @@ export function demoRejections(): DemoRejection[] {
     {
       id: "rej_01",
       name: "Kevin Odhiambo",
-      location: "Kisumu, Kisumu",
+      location: "Kilifi Town, Kilifi",
       reason: "National ID photo unreadable — details could not be matched",
       submittedAt: daysAgo(14),
       rejectedAt: daysAgo(12),
@@ -84,7 +84,7 @@ export function demoRejections(): DemoRejection[] {
     {
       id: "rej_02",
       name: "Sunrise Homes Ltd",
-      location: "Mombasa, Mombasa",
+      location: "Nyali, Mombasa",
       reason: "Business permit expired in 2024",
       submittedAt: daysAgo(21),
       rejectedAt: daysAgo(19),
@@ -93,7 +93,7 @@ export function demoRejections(): DemoRejection[] {
     {
       id: "rej_03",
       name: "Alice Muthoni",
-      location: "Nakuru, Nakuru",
+      location: "Diani, Kwale",
       reason: "M-Pesa number registered to a different name",
       submittedAt: daysAgo(30),
       rejectedAt: daysAgo(27),
@@ -102,7 +102,7 @@ export function demoRejections(): DemoRejection[] {
     {
       id: "rej_04",
       name: "Kanyi Rentals",
-      location: "Thika, Kiambu",
+      location: "Voi, Taita-Taveta",
       reason: "Duplicate application — already approved under another account",
       submittedAt: daysAgo(38),
       rejectedAt: daysAgo(36),
@@ -160,12 +160,12 @@ const REPORT_TITLES = [
 ] as const;
 
 const REPORT_AREAS = [
-  "Kilimani, Nairobi",
-  "Ruaka, Kiambu",
+  "Mtwapa, Kilifi",
   "Nyali, Mombasa",
-  "Westlands, Nairobi",
-  "Milimani, Kisumu",
-  "Kikuyu, Kiambu",
+  "Diani, Kwale",
+  "Shela, Lamu",
+  "Hola, Tana River",
+  "Voi, Taita-Taveta",
 ] as const;
 
 let cachedReports: DemoReport[] | null = null;
@@ -244,15 +244,15 @@ export function demoNonLiveProperties(): DemoPropertyRow[] {
     status: PropertyStatus;
   }[] = [
     {
-      title: "4 Bedroom Villa",
-      town: "Karen",
-      county: "Nairobi",
+      title: "4 Bedroom Beach Villa",
+      town: "Watamu",
+      county: "Kilifi",
       status: "DRAFT",
     },
     {
       title: "Bedsitter Block",
-      town: "Kahawa",
-      county: "Nairobi",
+      town: "Mokowe",
+      county: "Lamu",
       status: "DRAFT",
     },
     {
@@ -263,20 +263,20 @@ export function demoNonLiveProperties(): DemoPropertyRow[] {
     },
     {
       title: "Studio Apartment",
-      town: "Milimani",
-      county: "Kisumu",
+      town: "Diani",
+      county: "Kwale",
       status: "HIDDEN",
     },
     {
       title: "1 Bedroom Apartment",
-      town: "Ruaka",
-      county: "Kiambu",
+      town: "Garsen",
+      county: "Tana River",
       status: "ARCHIVED",
     },
     {
       title: "3 Bedroom Maisonette",
-      town: "Syokimau",
-      county: "Machakos",
+      town: "Voi",
+      county: "Taita-Taveta",
       status: "ARCHIVED",
     },
   ];

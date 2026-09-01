@@ -151,7 +151,12 @@ export function demoTopAreas(properties: PropertyCard[], limit = 5): TopArea[] {
       existing.listings += 1;
       continue;
     }
-    groups.set(key, { area, county: property.county ?? "", listings: 1, views: 0 });
+    groups.set(key, {
+      area,
+      county: property.county ?? "",
+      listings: 1,
+      views: 0,
+    });
   }
 
   return [...groups.values()]
@@ -167,11 +172,12 @@ export function demoTopAreas(properties: PropertyCard[], limit = 5): TopArea[] {
 
 /** Shown when there are no live listings to group — the design's own figures. */
 export const DEMO_FALLBACK_AREAS: TopArea[] = [
-  { area: "Kilimani", county: "Nairobi", listings: 1_248, views: 12_420 },
-  { area: "Westlands", county: "Nairobi", listings: 1_024, views: 10_180 },
-  { area: "Kileleshwa", county: "Nairobi", listings: 862, views: 8_640 },
-  { area: "Lavington", county: "Nairobi", listings: 704, views: 7_210 },
-  { area: "Karen", county: "Nairobi", listings: 540, views: 5_800 },
+  { area: "Mtwapa", county: "Kilifi", listings: 1_248, views: 12_420 },
+  { area: "Nyali", county: "Mombasa", listings: 1_024, views: 10_180 },
+  { area: "Diani", county: "Kwale", listings: 862, views: 8_640 },
+  { area: "Lamu Town", county: "Lamu", listings: 704, views: 7_210 },
+  { area: "Hola", county: "Tana River", listings: 420, views: 4_350 },
+  { area: "Voi", county: "Taita-Taveta", listings: 540, views: 5_800 },
 ];
 
 // -------------------------------------------------------------- analytics
@@ -215,7 +221,8 @@ export function demoViewsTrend(days: number): TrendPoint[] {
   const totals = demoAnalyticsTotals(days);
   const weights = Array.from(
     { length: days },
-    (_, index) => seededBetween(`vw:${days}:${index}`, 70, 130) + (index * 30) / days,
+    (_, index) =>
+      seededBetween(`vw:${days}:${index}`, 70, 130) + (index * 30) / days,
   );
   const sum = weights.reduce((total, weight) => total + weight, 0);
 
