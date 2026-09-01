@@ -62,6 +62,7 @@ import {
 } from "@/lib/format";
 import { useAsync } from "@/lib/hooks/use-async";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { COASTAL_COUNTIES } from "@/lib/locations";
 
 /**
  * Properties Management.
@@ -583,12 +584,22 @@ function FiltersSheet({
           </p>
 
           <Field label="County" htmlFor="filter-county">
-            <Input
-              id="filter-county"
-              value={draft.county}
-              onChange={(event) => set("county", event.target.value)}
-              placeholder="Nairobi"
-            />
+            <Select
+              value={draft.county || "all"}
+              onValueChange={(value) => set("county", value === "all" ? "" : value)}
+            >
+              <SelectTrigger id="filter-county" className="w-full">
+                <SelectValue placeholder="All coastal counties" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All coastal counties</SelectItem>
+                {COASTAL_COUNTIES.map((county) => (
+                  <SelectItem key={county} value={county}>
+                    {county}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
 
           <Field label="Town" htmlFor="filter-town">
