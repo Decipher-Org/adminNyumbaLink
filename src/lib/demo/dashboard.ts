@@ -16,7 +16,7 @@
  */
 
 import type { PropertyCard } from "@/lib/api/types";
-import { minutesAgo, seededBetween } from "@/lib/demo/seed";
+import { seededBetween } from "@/lib/demo/seed";
 import { pointLabel, type TrendPoint } from "@/lib/series";
 
 // ------------------------------------------------------------------ deltas
@@ -52,72 +52,6 @@ export function demoRegistrationsTrend(days: number): TrendPoint[] {
     const base = seededBetween(`reg:${days}:${index}`, 42, 96);
     return { label: pointLabel(index, days), value: Math.round(base * growth) };
   });
-}
-
-// --------------------------------------------------------- activity feed
-
-export type ActivityKind =
-  | "landlord"
-  | "property"
-  | "subscription"
-  | "report"
-  | "suspension"
-  | "payment";
-
-export type ActivityItem = {
-  id: string;
-  kind: ActivityKind;
-  title: string;
-  detail: string;
-  at: string;
-};
-
-/**
- * The recent-activity feed. Times are relative to now so the panel doesn't read
- * as stale, but nothing generates these: the platform keeps no audit log, so even
- * the admin actions this console performs leave no trace to display.
- */
-export function demoActivity(): ActivityItem[] {
-  return [
-    {
-      id: "a1",
-      kind: "landlord",
-      title: "New landlord registered",
-      detail: "Grace Wanjiku submitted verification details",
-      at: minutesAgo(3),
-    },
-    {
-      id: "a2",
-      kind: "property",
-      title: "Property published",
-      detail: "2 Bedroom Apartment · Kilimani, Nairobi",
-      at: minutesAgo(18),
-    },
-    {
-      id: "a3",
-      kind: "subscription",
-      // Sample, but shaped like a real Milestone 5 event: a 30-day term on one
-      // property, priced per rentable unit. "Premium plan · KSh 4,500" invented a
-      // tier and a monthly fee that neither the schema nor the pricing has.
-      title: "Listing term renewed",
-      detail: "2 units · KSh 80 · Otieno Properties",
-      at: minutesAgo(64),
-    },
-    {
-      id: "a4",
-      kind: "report",
-      title: "Listing reported",
-      detail: "Studio in Ruaka flagged as misleading photos",
-      at: minutesAgo(187),
-    },
-    {
-      id: "a5",
-      kind: "suspension",
-      title: "Account suspended",
-      detail: "brian.k@example.com · repeated policy violations",
-      at: minutesAgo(322),
-    },
-  ];
 }
 
 // -------------------------------------------------------------- top areas

@@ -3,9 +3,7 @@
  *
  * `demo` marks a destination whose screen is sample data — the shell renders a
  * small dot on those items, so the nav itself is honest about what works rather
- * than the operator finding out after the click. Four of the ten destinations
- * carry one, which is a fair summary of a backend that is complete through
- * Milestone 5.
+ * than the operator finding out after the click.
  *
  * `primary` picks the four items that get a slot in the mobile tab bar; the fifth
  * slot is a "More" button that opens the full list, so nothing is desktop-only.
@@ -13,6 +11,7 @@
 
 import {
   BarChart3,
+  ClipboardList,
   Bell,
   Building2,
   CreditCard,
@@ -84,8 +83,13 @@ export const ADMIN_NAV: NavItem[] = [
     to: "/reports",
     label: "Reports",
     icon: Flag,
-    demo: "reports",
     hint: "Reported listings",
+  },
+  {
+    to: "/audit-logs",
+    label: "Audit log",
+    icon: ClipboardList,
+    hint: "Administrative action history",
   },
   {
     to: "/analytics",

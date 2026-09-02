@@ -1,7 +1,13 @@
 import type { ReactNode } from "react";
 
-import type { PaymentStatus, PropertyStatus, Role, UserStatus } from "@/lib/api/types";
-import type { DocumentStatus, ReportStatus } from "@/lib/demo/ops";
+import type {
+  PaymentStatus,
+  PropertyStatus,
+  ReportStatus,
+  Role,
+  UserStatus,
+} from "@/lib/api/types";
+import type { DocumentStatus } from "@/lib/demo/ops";
 import { cn } from "@/lib/utils";
 
 /**
@@ -16,7 +22,14 @@ import { cn } from "@/lib/utils";
  * pending amber, suspended red — and every mapping below honours it.
  */
 
-type Tone = "success" | "warning" | "destructive" | "inactive" | "info" | "muted" | "primary";
+type Tone =
+  | "success"
+  | "warning"
+  | "destructive"
+  | "inactive"
+  | "info"
+  | "muted"
+  | "primary";
 
 const TONE_CLASSES: Record<Tone, string> = {
   success: "bg-success-soft text-success-strong",
@@ -70,7 +83,10 @@ export function UserStatusBadge({
   status: UserStatus;
   className?: string;
 }) {
-  const entry = USER_STATUS_MAP[status] ?? { tone: "muted" as Tone, label: status };
+  const entry = USER_STATUS_MAP[status] ?? {
+    tone: "muted" as Tone,
+    label: status,
+  };
   return (
     <Pill tone={entry.tone} className={className}>
       {entry.label}
@@ -84,7 +100,13 @@ const ROLE_MAP: Record<Role, { tone: Tone; label: string }> = {
   TENANT: { tone: "muted", label: "Tenant" },
 };
 
-export function RoleBadge({ role, className }: { role: Role; className?: string }) {
+export function RoleBadge({
+  role,
+  className,
+}: {
+  role: Role;
+  className?: string;
+}) {
   const entry = ROLE_MAP[role] ?? { tone: "muted" as Tone, label: role };
   return (
     <Pill tone={entry.tone} className={className}>
@@ -118,7 +140,10 @@ export function ApprovalBadge({
  * `ARCHIVED` uses muted rather than destructive red: archiving is a normal
  * end-of-life move, not an error.
  */
-const PROPERTY_STATUS_MAP: Record<PropertyStatus, { tone: Tone; label: string }> = {
+const PROPERTY_STATUS_MAP: Record<
+  PropertyStatus,
+  { tone: Tone; label: string }
+> = {
   ACTIVE: { tone: "success", label: "Active" },
   DRAFT: { tone: "warning", label: "Draft" },
   HIDDEN: { tone: "inactive", label: "Hidden" },
@@ -155,13 +180,14 @@ export function PropertyStatusBadge({
  * prompt. Nothing broke, so red would misattribute it — the same reasoning as
  * `DEACTIVATED` above.
  */
-const PAYMENT_STATUS_MAP: Record<PaymentStatus, { tone: Tone; label: string }> = {
-  PENDING: { tone: "warning", label: "Pending" },
-  QUEUED: { tone: "warning", label: "Queued" },
-  SUCCESS: { tone: "success", label: "Successful" },
-  FAILED: { tone: "destructive", label: "Failed" },
-  CANCELLED: { tone: "inactive", label: "Cancelled" },
-};
+const PAYMENT_STATUS_MAP: Record<PaymentStatus, { tone: Tone; label: string }> =
+  {
+    PENDING: { tone: "warning", label: "Pending" },
+    QUEUED: { tone: "warning", label: "Queued" },
+    SUCCESS: { tone: "success", label: "Successful" },
+    FAILED: { tone: "destructive", label: "Failed" },
+    CANCELLED: { tone: "inactive", label: "Cancelled" },
+  };
 
 export function PaymentStatusBadge({
   status,
@@ -170,7 +196,10 @@ export function PaymentStatusBadge({
   status: PaymentStatus;
   className?: string;
 }) {
-  const entry = PAYMENT_STATUS_MAP[status] ?? { tone: "muted" as Tone, label: status };
+  const entry = PAYMENT_STATUS_MAP[status] ?? {
+    tone: "muted" as Tone,
+    label: status,
+  };
   return (
     <Pill tone={entry.tone} className={className}>
       {entry.label}
@@ -227,7 +256,10 @@ export function ReportStatusBadge({
   );
 }
 
-const DOCUMENT_STATUS_MAP: Record<DocumentStatus, { tone: Tone; label: string }> = {
+const DOCUMENT_STATUS_MAP: Record<
+  DocumentStatus,
+  { tone: Tone; label: string }
+> = {
   RECEIVED: { tone: "success", label: "Received" },
   MISSING: { tone: "destructive", label: "Missing" },
   UNREADABLE: { tone: "warning", label: "Unreadable" },
@@ -263,7 +295,10 @@ export function DocumentCount({
   className?: string;
 }) {
   return (
-    <Pill tone={received >= required ? "success" : "warning"} className={className}>
+    <Pill
+      tone={received >= required ? "success" : "warning"}
+      className={className}
+    >
       {received}/{required}
     </Pill>
   );

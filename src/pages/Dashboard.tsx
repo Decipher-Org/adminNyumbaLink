@@ -2,28 +2,34 @@ import { useMemo, useState } from "react";
 import {
   ArrowRight,
   Building2,
+  ClipboardList,
   Clock,
   CreditCard,
+  Flag,
   ShieldCheck,
   Users,
   Wallet,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { BarChart, DonutChart, LineChart, RankedBars } from "@/components/app/charts";
+import {
+  BarChart,
+  DonutChart,
+  LineChart,
+  RankedBars,
+} from "@/components/app/charts";
 import { DemoBadge } from "@/components/app/DemoBadge";
 import { PageHeader, Panel } from "@/components/app/PageHeader";
 import { RangeSelect } from "@/components/app/RangeSelect";
 import { StatCard, StatCardSkeleton } from "@/components/app/StatCard";
-import { ErrorState, PanelSkeleton } from "@/components/app/States";
+import { EmptyState, ErrorState, PanelSkeleton } from "@/components/app/States";
 import { Button } from "@/components/ui/button";
 import { fetchPlatformCounts, fetchRevenueSeries } from "@/lib/api/admin";
 import { listProperties } from "@/lib/api/properties";
-import type { RevenuePoint } from "@/lib/api/types";
+import type { AdminAuditLog, RevenuePoint } from "@/lib/api/types";
 import {
   DEMO_DELTAS,
   DEMO_FALLBACK_AREAS,
-  demoActivity,
   demoRegistrationsTrend,
   demoTopAreas,
 } from "@/lib/demo/dashboard";
@@ -48,14 +54,55 @@ import {
  * "nobody has paid".
  *
  * What is still invented is what needs history the platform doesn't keep: the growth
- * percentages, the registrations curve, the activity feed, and the view counts in the
- * areas panel. Each carries its own badge; see `lib/demo/registry.ts`.
+ * percentages, the registrations curve, and the view counts in the areas panel. Each
+ * carries its own badge; see `lib/demo/registry.ts`. Administrative activity is real.
  *
  * The property count is worth reading twice: it counts listings at status ACTIVE,
  * so the number is *live listings*, not all listings. The card says "Live
  * properties" rather than "Properties", because a label that overstates what it
  * counts is the kind of thing an operator later makes a decision on.
  */
+function formatAuditTitle(log: AdminAuditLog): string {
+  switch (log.action) {
+    case "USER_ROLE_CHANGE":
+      return `Role changed: ${String(log.metadata?.newRole ?? "User")}`;
+    case "USER_SUSPEND":
+      return "User suspended";
+    case "USER_REINSTATE":
+      return "User reinstated";
+    case "LANDLORD_APPROVE":
+      return "Landlord approved";
+    case "REPORT_RESOLVE_HIDE":
+      return "Listing hidden & report resolved";
+    case "REPORT_RESOLVED":
+      return "Report resolved";
+    case "REPORT_DISMISSED":
+      return "Report dismissed";
+    case "REPORT_REVIEWING":
+      return "Report review started";
+    case "JOB_RETRY_REQUESTED":
+      return "Background job retry requested";
+    case "PAYMENT_RECONCILE_REQUESTED":
+      return "Payment reconciliation requested";
+    default:
+      return log.action.replace(/_/g, " ");
+  }
+}
+
+function formatAuditDetail(log: AdminAuditLog): string {
+  const actor = log.admin?.name || log.admin?.email || "Admin";
+  if (log.action === "USER_SUSPEND" && log.metadata?.reason) {
+    return `${actor}: ${String(log.metadata.reason)}`;
+  }
+  if (log.metadata?.notes) {
+    return `${actor}: ${String(log.metadata.notes)}`;
+  }
+  if (log.metadata?.targetEmail) {
+    return `By ${actor} on ${String(log.metadata.targetEmail)}`;
+  }
+  return `By ${actor} on ${log.targetType.toLowerCase()}`;
+}
+
 export default function Dashboard() {
   const [range, setRange] = useState<RangeKey>("7d");
   const days = daysForRange(range);
@@ -77,6 +124,8 @@ export default function Dashboard() {
   const properties = data?.properties;
   const payments = counts?.payments;
   const subscriptions = counts?.subscriptions;
+  const reports = counts?.reports;
+  const recentActivity = counts?.recentActivity;
 
   /**
    * The dashboard already carries 30 days of revenue, so 7d and 30d are a slice of what
@@ -84,16 +133,30 @@ export default function Dashboard() {
    * this fetcher returns `undefined` for the other two rather than duplicating them.
    */
   const extended = useAsync(
-    (signal) => (days === 90 ? fetchRevenueSeries({ days: 90, signal }) : Promise.resolve(undefined)),
+    (signal) =>
+      days === 90
+        ? fetchRevenueSeries({ days: 90, signal })
+        : Promise.resolve(undefined),
     [days],
   );
 
   const revenuePoints: RevenuePoint[] | undefined =
     days === 90 ? extended.data?.points : payments?.series30d.slice(-days);
-  const revenueTotal = revenuePoints?.reduce((sum, point) => sum + point.amount, 0);
+  const revenueTotal = revenuePoints?.reduce(
+    (sum, point) => sum + point.amount,
+    0,
+  );
 
   const registrations = useMemo(() => demoRegistrationsTrend(days), [days]);
-  const activity = useMemo(() => demoActivity(), []);
+
+  const activity = useMemo(() => {
+    return (recentActivity ?? []).map((log) => ({
+      id: log.id,
+      title: formatAuditTitle(log),
+      detail: formatAuditDetail(log),
+      at: log.createdAt,
+    }));
+  }, [recentActivity]);
 
   const areas = useMemo(() => {
     const grouped = demoTopAreas(properties?.items ?? []);
@@ -106,7 +169,10 @@ export default function Dashboard() {
   if (error) {
     return (
       <>
-        <PageHeader title="Dashboard" description="Platform health at a glance." />
+        <PageHeader
+          title="Dashboard"
+          description="Platform health at a glance."
+        />
         <ErrorState error={error} onRetry={reload} />
       </>
     );
@@ -117,16 +183,23 @@ export default function Dashboard() {
       <PageHeader
         title="Dashboard"
         description="Live platform counts, revenue and listing terms."
-        actions={<RangeSelect value={range} onChange={setRange} className="w-full sm:w-44" />}
+        actions={
+          <RangeSelect
+            value={range}
+            onChange={setRange}
+            className="w-full sm:w-44"
+          />
+        }
       />
 
-      {/* The one genuinely actionable number on the screen gets a row of its own. */}
+      {/* The actionable numbers on the screen get prominent alert rows. */}
       {counts && counts.pendingApprovals > 0 ? (
-        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-warning/30 bg-warning-soft px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-warning/30 bg-warning-soft px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-body-sm text-warning-strong">
             <p className="font-semibold">
               {formatNumber(counts.pendingApprovals)}{" "}
-              {counts.pendingApprovals === 1 ? "landlord is" : "landlords are"} waiting for approval
+              {counts.pendingApprovals === 1 ? "landlord is" : "landlords are"}{" "}
+              waiting for approval
             </p>
             <p className="mt-0.5 opacity-90">
               They can't publish a listing until someone reviews them.
@@ -141,9 +214,33 @@ export default function Dashboard() {
         </div>
       ) : null}
 
+      {reports && reports.open > 0 ? (
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive-soft px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-body-sm text-destructive-strong">
+            <p className="font-semibold">
+              {formatNumber(reports.open)}{" "}
+              {reports.open === 1 ? "listing report is" : "listing reports are"}{" "}
+              waiting for review
+            </p>
+            <p className="mt-0.5 opacity-90">
+              Tenants have flagged listings that require operational
+              investigation.
+            </p>
+          </div>
+          <Button asChild variant="outline" className="shrink-0 bg-card">
+            <Link to="/reports?status=OPEN">
+              Open report queue
+              <ArrowRight />
+            </Link>
+          </Button>
+        </div>
+      ) : null}
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {loading && !counts ? (
-          Array.from({ length: 6 }, (_, index) => <StatCardSkeleton key={index} />)
+          Array.from({ length: 6 }, (_, index) => (
+            <StatCardSkeleton key={index} />
+          ))
         ) : (
           <>
             <StatCard
@@ -168,7 +265,9 @@ export default function Dashboard() {
             />
             <StatCard
               label="Live properties"
-              value={formatNumber(counts?.liveProperties ?? properties?.pagination.total)}
+              value={formatNumber(
+                counts?.liveProperties ?? properties?.pagination.total,
+              )}
               icon={Building2}
               delta={{
                 value: DEMO_DELTAS.properties,
@@ -178,14 +277,24 @@ export default function Dashboard() {
             />
             <StatCard
               label="Active listing terms"
-              value={subscriptions ? formatNumber(subscriptions.landlordActive) : "—"}
+              value={
+                subscriptions ? formatNumber(subscriptions.landlordActive) : "—"
+              }
               note="Properties with time left on a term"
               icon={Wallet}
             />
             <StatCard
               label={`Revenue · ${rangeLabel}`}
-              value={revenueTotal === undefined ? "—" : formatKesCompact(revenueTotal)}
-              note={revenueTotal === undefined ? "Not available" : "Settled M-Pesa payments"}
+              value={
+                revenueTotal === undefined
+                  ? "—"
+                  : formatKesCompact(revenueTotal)
+              }
+              note={
+                revenueTotal === undefined
+                  ? "Not available"
+                  : "Settled M-Pesa payments"
+              }
               icon={CreditCard}
             />
             {/*
@@ -197,7 +306,10 @@ export default function Dashboard() {
               value={
                 payments ? (
                   payments.pending > 0 ? (
-                    <Link to="/payments?status=PENDING" className="hover:underline">
+                    <Link
+                      to="/payments?status=PENDING"
+                      className="hover:underline"
+                    >
                       {formatNumber(payments.pending)}
                     </Link>
                   ) : (
@@ -213,6 +325,28 @@ export default function Dashboard() {
                   : "Nothing awaiting confirmation"
               }
               icon={Clock}
+            />
+            <StatCard
+              label="Open reports"
+              value={
+                reports ? (
+                  reports.open > 0 ? (
+                    <Link to="/reports?status=OPEN" className="hover:underline">
+                      {formatNumber(reports.open)}
+                    </Link>
+                  ) : (
+                    formatNumber(0)
+                  )
+                ) : (
+                  "—"
+                )
+              }
+              note={
+                reports && reports.open > 0
+                  ? `${formatNumber(reports.reviewing)} currently under review`
+                  : "No unresolved tenant reports"
+              }
+              icon={Flag}
             />
           </>
         )}
@@ -273,10 +407,11 @@ export default function Dashboard() {
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Panel
           title="Revenue trend"
-          description={
-            revenueTotal === undefined
-              ? `Settled payments per day, ${rangeLabel}`
-              : `${formatKes(revenueTotal)} · ${rangeLabel}`
+          description={`Money settled, ${rangeLabel}`}
+          footer={
+            payments
+              ? `Totals exclude ${formatKes(payments.failed7d)} of failed payments in the last 7 days.`
+              : undefined
           }
           className="lg:col-span-2"
         >
@@ -296,24 +431,34 @@ export default function Dashboard() {
           )}
         </Panel>
 
-        <Panel title="Recent activity" action={<DemoBadge feature="activityFeed" />}>
-          <ol className="space-y-4">
-            {activity.map((item) => (
-              <li key={item.id} className="flex gap-3">
-                <span
-                  aria-hidden="true"
-                  className="mt-1.5 size-2 shrink-0 rounded-full bg-primary"
-                />
-                <div className="min-w-0">
-                  <p className="text-body-sm font-medium text-foreground">{item.title}</p>
-                  <p className="text-caption text-muted-foreground">{item.detail}</p>
-                  <p className="mt-0.5 text-caption text-muted-foreground/80">
-                    {formatRelative(item.at)}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
+        <Panel
+          title="Recent activity"
+          action={
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/audit-logs">View all</Link>
+            </Button>
+          }
+        >
+          {activity.length === 0 ? (
+            <EmptyState
+              icon={ClipboardList}
+              title="No administrative activity yet"
+              body="Completed admin actions will appear here."
+            />
+          ) : (
+            <ol className="space-y-4">
+              {activity.map((item) => (
+                <li key={item.id} className="flex gap-3">
+                  <span aria-hidden="true" className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" />
+                  <div className="min-w-0">
+                    <p className="text-body-sm font-medium text-foreground">{item.title}</p>
+                    <p className="text-caption text-muted-foreground">{item.detail}</p>
+                    <p className="mt-0.5 text-caption text-muted-foreground/80">{formatRelative(item.at)}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
         </Panel>
       </div>
 

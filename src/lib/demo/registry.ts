@@ -26,10 +26,8 @@
 export type DemoFeatureId =
   | "growthDeltas"
   | "registrationsTrend"
-  | "activityFeed"
   | "views"
   | "analytics"
-  | "reports"
   | "landlordDocuments"
   | "rejections"
   | "bulkActions"
@@ -59,11 +57,6 @@ export const DEMO_FEATURES: Record<DemoFeatureId, DemoFeature> = {
     milestone: "Milestone 10",
     note: "Sample curve. Users can only be counted in total right now, not grouped by the day they signed up.",
   },
-  activityFeed: {
-    label: "Recent activity",
-    milestone: "Milestone 10",
-    note: "Sample events. The platform keeps no audit log, so admin and user actions are not recorded anywhere.",
-  },
   views: {
     label: "Listing views",
     milestone: "Milestone 10",
@@ -73,11 +66,6 @@ export const DEMO_FEATURES: Record<DemoFeatureId, DemoFeature> = {
     label: "Analytics",
     milestone: "Milestone 10",
     note: "Sample traffic, device and engagement figures. No analytics are collected.",
-  },
-  reports: {
-    label: "Reported listings",
-    milestone: "Milestone 10",
-    note: "Sample reports. Tenants have no way to report a listing yet and there is nowhere to store one.",
   },
   landlordDocuments: {
     label: "Verification documents",

@@ -1,17 +1,16 @@
 /**
  * Sample data for the operational surfaces with no backend behind them:
- * verification documents, rejection history, reported listings, and the
- * non-live property rows an admin cannot fetch.
+ * verification documents, rejection history, and the non-live property rows an
+ * admin cannot fetch.
  *
  * Each of these is registered in `lib/demo/registry.ts` with the reason it is
- * fake. Three of them are fake for a stronger reason than "the endpoint isn't
+ * fake. Two of them are fake for a stronger reason than "the endpoint isn't
  * written yet" — there is nowhere in the schema to put the data at all:
  *
  *  - **documents**: a landlord submits a `nationalId` string. No file is uploaded,
  *    so there is nothing to review or count.
  *  - **rejections**: approval is a single `verified` boolean. There is no rejected
  *    state and no column for a reason, so a rejection cannot be recorded.
- *  - **reports**: tenants have no way to report a listing and no table stores one.
  *
  * That distinction is in the tooltips, because "coming in Milestone 10" and
  * "needs a schema change" are different promises.
@@ -109,108 +108,6 @@ export function demoRejections(): DemoRejection[] {
       rejectedBy: "Admin User",
     },
   ];
-}
-
-// -------------------------------------------------------- reported listings
-
-export type ReportReason =
-  | "MISLEADING_PHOTOS"
-  | "WRONG_PRICE"
-  | "ALREADY_TAKEN"
-  | "SUSPECTED_SCAM"
-  | "DUPLICATE";
-
-export type ReportStatus = "OPEN" | "REVIEWING" | "RESOLVED" | "DISMISSED";
-
-export type DemoReport = {
-  id: string;
-  propertyTitle: string;
-  location: string;
-  landlord: string;
-  reason: ReportReason;
-  status: ReportStatus;
-  reporter: string;
-  note: string;
-  createdAt: string;
-};
-
-export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
-  MISLEADING_PHOTOS: "Misleading photos",
-  WRONG_PRICE: "Wrong price",
-  ALREADY_TAKEN: "Already taken",
-  SUSPECTED_SCAM: "Suspected scam",
-  DUPLICATE: "Duplicate listing",
-};
-
-const REPORT_NOTES: Record<ReportReason, string> = {
-  MISLEADING_PHOTOS: "Photos show a different unit to the one viewed.",
-  WRONG_PRICE: "Rent quoted on the phone is higher than the listing.",
-  ALREADY_TAKEN: "Unit was occupied when the tenant arrived.",
-  SUSPECTED_SCAM: "Deposit requested before any viewing.",
-  DUPLICATE: "Same unit posted twice under different landlords.",
-};
-
-const REPORT_TITLES = [
-  "2 Bedroom Apartment",
-  "Modern Studio",
-  "Spacious Bedsitter",
-  "3 Bedroom Maisonette",
-  "1 Bedroom Apartment",
-  "Furnished Studio",
-] as const;
-
-const REPORT_AREAS = [
-  "Mtwapa, Kilifi",
-  "Nyali, Mombasa",
-  "Diani, Kwale",
-  "Shela, Lamu",
-  "Hola, Tana River",
-  "Voi, Taita-Taveta",
-] as const;
-
-let cachedReports: DemoReport[] | null = null;
-
-export function demoReports(): DemoReport[] {
-  if (cachedReports) return cachedReports;
-
-  cachedReports = Array.from({ length: 14 }, (_, index) => {
-    const key = `rep:${index}`;
-    const reason = seededPick<ReportReason>(`${key}:reason`, [
-      "MISLEADING_PHOTOS",
-      "WRONG_PRICE",
-      "ALREADY_TAKEN",
-      "SUSPECTED_SCAM",
-      "DUPLICATE",
-    ]);
-    return {
-      id: `rpt_${String(index + 1).padStart(3, "0")}`,
-      propertyTitle: seededPick(`${key}:title`, REPORT_TITLES),
-      location: seededPick(`${key}:area`, REPORT_AREAS),
-      landlord: seededPick(`${key}:landlord`, [
-        "Grace Wanjiku",
-        "Otieno Properties",
-        "Amina Hassan",
-        "Peter Mwangi",
-      ]),
-      reason,
-      status: seededPick<ReportStatus>(`${key}:status`, [
-        "OPEN",
-        "OPEN",
-        "REVIEWING",
-        "RESOLVED",
-        "DISMISSED",
-      ]),
-      reporter: seededPick(`${key}:reporter`, [
-        "tenant****@gmail.com",
-        "j****@yahoo.com",
-        "m****@outlook.com",
-      ]),
-      note: REPORT_NOTES[reason],
-      createdAt: daysAgo(seededBetween(`${key}:age`, 0, 25)),
-    };
-  });
-
-  return cachedReports;
 }
 
 // ------------------------------------------------------- non-live properties

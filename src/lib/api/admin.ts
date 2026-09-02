@@ -11,7 +11,12 @@
  * they are absent from this module rather than stubbed in it.
  */
 
-import { apiFetch, apiFetchPaged, ApiError, type ApiPagination } from "./client";
+import {
+  apiFetch,
+  apiFetchPaged,
+  ApiError,
+  type ApiPagination,
+} from "./client";
 import { runWithConcurrency } from "./concurrency";
 import type {
   AdminLandlord,
@@ -26,21 +31,37 @@ import type {
   RevenueSeries,
   Role,
   UserStatus,
+  AdminReport,
+  AdminAuditLog,
+  ReportAction,
+  ReportReason,
+  ReportStatus,
 } from "./types";
 
 export type Paged<T> = { items: T[]; pagination: ApiPagination };
 
-const EMPTY_PAGINATION: ApiPagination = { page: 1, limit: 0, total: 0, totalPages: 0 };
+const EMPTY_PAGINATION: ApiPagination = {
+  page: 1,
+  limit: 0,
+  total: 0,
+  totalPages: 0,
+};
 
 /**
  * The backend always sends `pagination` on list routes, but a defaulted block
  * keeps a screen from crashing on a malformed response — a blank table is a
  * better failure than a white page.
  */
-function toPaged<T>(result: { data: T[]; pagination?: ApiPagination }): Paged<T> {
+function toPaged<T>(result: {
+  data: T[];
+  pagination?: ApiPagination;
+}): Paged<T> {
   return {
     items: Array.isArray(result.data) ? result.data : [],
-    pagination: result.pagination ?? { ...EMPTY_PAGINATION, total: result.data?.length ?? 0 },
+    pagination: result.pagination ?? {
+      ...EMPTY_PAGINATION,
+      total: result.data?.length ?? 0,
+    },
   };
 }
 
@@ -57,10 +78,14 @@ export type ListUsersParams = {
   signal?: AbortSignal;
 };
 
-export async function listUsers({ signal, ...query }: ListUsersParams = {}): Promise<
-  Paged<AdminUser>
-> {
-  const result = await apiFetchPaged<AdminUser[]>("/admin/users", { query, signal });
+export async function listUsers({
+  signal,
+  ...query
+}: ListUsersParams = {}): Promise<Paged<AdminUser>> {
+  const result = await apiFetchPaged<AdminUser[]>("/admin/users", {
+    query,
+    signal,
+  });
   return toPaged(result);
 }
 
@@ -81,7 +106,10 @@ export function getUser(id: string, signal?: AbortSignal): Promise<AdminUser> {
  * survive and reappear if the role is granted back.
  */
 export function changeUserRole(id: string, role: Role): Promise<AdminUser> {
-  return apiFetch<AdminUser>(`/admin/users/${id}/role`, { method: "PATCH", body: { role } });
+  return apiFetch<AdminUser>(`/admin/users/${id}/role`, {
+    method: "PATCH",
+    body: { role },
+  });
 }
 
 /**
@@ -90,7 +118,10 @@ export function changeUserRole(id: string, role: Role): Promise<AdminUser> {
  * not a throwaway. Also revokes every session for that user.
  */
 export function suspendUser(id: string, reason: string): Promise<AdminUser> {
-  return apiFetch<AdminUser>(`/admin/users/${id}/suspend`, { method: "PATCH", body: { reason } });
+  return apiFetch<AdminUser>(`/admin/users/${id}/suspend`, {
+    method: "PATCH",
+    body: { reason },
+  });
 }
 
 /**
@@ -99,7 +130,9 @@ export function suspendUser(id: string, reason: string): Promise<AdminUser> {
  * hidden rather than offered-and-failed.
  */
 export function reinstateUser(id: string): Promise<AdminUser> {
-  return apiFetch<AdminUser>(`/admin/users/${id}/reinstate`, { method: "PATCH" });
+  return apiFetch<AdminUser>(`/admin/users/${id}/reinstate`, {
+    method: "PATCH",
+  });
 }
 
 // --------------------------------------------------------------- landlords
@@ -116,10 +149,14 @@ export type ListLandlordsParams = {
   signal?: AbortSignal;
 };
 
-export async function listLandlords({ signal, ...query }: ListLandlordsParams = {}): Promise<
-  Paged<AdminLandlord>
-> {
-  const result = await apiFetchPaged<AdminLandlord[]>("/admin/landlords", { query, signal });
+export async function listLandlords({
+  signal,
+  ...query
+}: ListLandlordsParams = {}): Promise<Paged<AdminLandlord>> {
+  const result = await apiFetchPaged<AdminLandlord[]>("/admin/landlords", {
+    query,
+    signal,
+  });
   return toPaged(result);
 }
 
@@ -135,7 +172,9 @@ export async function listLandlords({ signal, ...query }: ListLandlordsParams = 
  * reason, so the mockup's Reject action and Rejection History tab are demo-only.
  */
 export function approveLandlord(id: string): Promise<AdminLandlord> {
-  return apiFetch<AdminLandlord>(`/admin/landlords/${id}/approve`, { method: "PATCH" });
+  return apiFetch<AdminLandlord>(`/admin/landlords/${id}/approve`, {
+    method: "PATCH",
+  });
 }
 
 // ---------------------------------------------------------------- payments
@@ -161,10 +200,14 @@ export type ListPaymentsParams = {
  * No `provider` param is threaded even though the backend accepts one: `MPESA` is the
  * only value, so filtering on it is filtering on nothing.
  */
-export async function listAdminPayments({ signal, ...query }: ListPaymentsParams = {}): Promise<
-  Paged<AdminPayment>
-> {
-  const result = await apiFetchPaged<AdminPayment[]>("/admin/payments", { query, signal });
+export async function listAdminPayments({
+  signal,
+  ...query
+}: ListPaymentsParams = {}): Promise<Paged<AdminPayment>> {
+  const result = await apiFetchPaged<AdminPayment[]>("/admin/payments", {
+    query,
+    signal,
+  });
   return toPaged(result);
 }
 
@@ -182,7 +225,10 @@ export function fetchRevenueSeries({
   days = 30,
   signal,
 }: { days?: 7 | 30 | 90; signal?: AbortSignal } = {}): Promise<RevenueSeries> {
-  return apiFetch<RevenueSeries>("/admin/payments/revenue", { query: { days }, signal });
+  return apiFetch<RevenueSeries>("/admin/payments/revenue", {
+    query: { days },
+    signal,
+  });
 }
 
 /**
@@ -195,7 +241,10 @@ export function fetchRevenueSeries({
  * `user`, so the list is the richer source and this is here for a fresh read after a
  * reconcile.
  */
-export function getAdminPayment(id: string, signal?: AbortSignal): Promise<PaymentDto> {
+export function getAdminPayment(
+  id: string,
+  signal?: AbortSignal,
+): Promise<PaymentDto> {
   return apiFetch<PaymentDto>(`/payments/${id}`, { signal });
 }
 
@@ -223,10 +272,13 @@ export async function reconcileAdminPayment(
   id: string,
   signal?: AbortSignal,
 ): Promise<ReconcileOutcome> {
-  const { data, message } = await apiFetchPaged<ReconcileResult>(`/payments/${id}/reconcile`, {
-    method: "POST",
-    signal,
-  });
+  const { data, message } = await apiFetchPaged<ReconcileResult>(
+    `/payments/${id}/reconcile`,
+    {
+      method: "POST",
+      signal,
+    },
+  );
   return { ...data, message };
 }
 
@@ -253,10 +305,13 @@ export async function listAdminSubscriptions({
   signal,
   ...query
 }: ListSubscriptionsParams = {}): Promise<Paged<AdminSubscription>> {
-  const result = await apiFetchPaged<AdminSubscription[]>("/admin/subscriptions", {
-    query,
-    signal,
-  });
+  const result = await apiFetchPaged<AdminSubscription[]>(
+    "/admin/subscriptions",
+    {
+      query,
+      signal,
+    },
+  );
   return toPaged(result);
 }
 
@@ -282,6 +337,19 @@ export type PlatformCounts = {
    */
   payments?: DashboardPayments;
   subscriptions?: DashboardSubscriptions;
+  /**
+   * Milestone 10. Live report counts from `GET /admin/dashboard`.
+   */
+  reports?: DashboardReports;
+  recentActivity?: AdminAuditLog[];
+};
+
+export type DashboardReports = {
+  total: number;
+  open: number;
+  reviewing: number;
+  resolved: number;
+  dismissed: number;
 };
 
 /**
@@ -335,9 +403,17 @@ export type DashboardResponse = {
     deactivated: number;
   };
   landlords: { total: number; verified: number; pendingApproval: number };
-  properties: { total: number; active: number; draft: number; hidden: number; archived: number };
+  properties: {
+    total: number;
+    active: number;
+    draft: number;
+    hidden: number;
+    archived: number;
+  };
   payments: DashboardPayments;
   subscriptions: DashboardSubscriptions;
+  reports?: DashboardReports;
+  recentActivity?: AdminAuditLog[];
 };
 
 /**
@@ -361,7 +437,9 @@ export type DashboardResponse = {
  * Real Milestone 1–5 data. The growth percentages beside them are not; those come
  * from `lib/demo/` because no endpoint reports a previous period.
  */
-export async function fetchPlatformCounts(signal?: AbortSignal): Promise<PlatformCounts> {
+export async function fetchPlatformCounts(
+  signal?: AbortSignal,
+): Promise<PlatformCounts> {
   try {
     const d = await apiFetch<DashboardResponse>("/admin/dashboard", { signal });
     return {
@@ -374,6 +452,8 @@ export async function fetchPlatformCounts(signal?: AbortSignal): Promise<Platfor
       liveProperties: d.properties.active,
       payments: d.payments,
       subscriptions: d.subscriptions,
+      reports: d.reports,
+      recentActivity: d.recentActivity,
     };
   } catch (error) {
     if (!(error instanceof ApiError) || error.status !== 404) throw error;
@@ -396,7 +476,9 @@ export async function fetchPlatformCounts(signal?: AbortSignal): Promise<Platfor
  * The order below is the order they resolve in, so the two numbers the dashboard
  * leads with — total users and pending approvals — come first.
  */
-async function fetchPlatformCountsFromLists(signal?: AbortSignal): Promise<PlatformCounts> {
+async function fetchPlatformCountsFromLists(
+  signal?: AbortSignal,
+): Promise<PlatformCounts> {
   const count = async (query: Record<string, string | number>) => {
     const { pagination } = await apiFetchPaged<AdminUser[]>("/admin/users", {
       query: { ...query, limit: 1 },
@@ -419,5 +501,85 @@ async function fetchPlatformCountsFromLists(signal?: AbortSignal): Promise<Platf
       () => count({ status: "SUSPENDED" }),
     ]);
 
-  return { totalUsers, tenants, landlords, admins, suspended, pendingApprovals };
+  return {
+    totalUsers,
+    tenants,
+    landlords,
+    admins,
+    suspended,
+    pendingApprovals,
+  };
+}
+
+// ------------------------------------------------------------------ reports
+
+export type ListReportsParams = {
+  page?: number;
+  limit?: number;
+  status?: ReportStatus | "all" | "";
+  reason?: ReportReason | "all" | "";
+  propertyId?: string;
+  search?: string;
+  signal?: AbortSignal;
+};
+
+export async function listReports({
+  signal,
+  ...query
+}: ListReportsParams = {}): Promise<Paged<AdminReport>> {
+  const cleanQuery: Record<string, string | number | undefined> = {};
+  if (query.page) cleanQuery.page = query.page;
+  if (query.limit) cleanQuery.limit = query.limit;
+  if (query.status && query.status !== "all") cleanQuery.status = query.status;
+  if (query.reason && query.reason !== "all") cleanQuery.reason = query.reason;
+  if (query.propertyId) cleanQuery.propertyId = query.propertyId;
+  if (query.search) cleanQuery.search = query.search;
+
+  const result = await apiFetchPaged<AdminReport[]>("/admin/reports", {
+    query: cleanQuery,
+    signal,
+  });
+  return toPaged(result);
+}
+
+export type ResolveReportPayload = {
+  action: ReportAction;
+  notes?: string;
+};
+
+export async function resolveReport(
+  id: string,
+  payload: ResolveReportPayload,
+): Promise<AdminReport> {
+  return apiFetch<AdminReport>(`/admin/reports/${id}/resolve`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+// ---------------------------------------------------------------- audit logs
+
+export type ListAuditLogsParams = {
+  page?: number;
+  limit?: number;
+  actor?: string;
+  adminId?: string;
+  action?: string;
+  targetType?: string;
+  targetId?: string;
+  from?: string;
+  to?: string;
+  search?: string;
+  signal?: AbortSignal;
+};
+
+export async function listAuditLogs({
+  signal,
+  ...query
+}: ListAuditLogsParams = {}): Promise<Paged<AdminAuditLog>> {
+  const result = await apiFetchPaged<AdminAuditLog[]>("/admin/audit-logs", {
+    query,
+    signal,
+  });
+  return toPaged(result);
 }
