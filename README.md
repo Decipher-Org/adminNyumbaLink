@@ -33,12 +33,12 @@ node scripts/create-admin.mjs --email you@example.com --password '...' --name 'Y
 
 Every admin after that is promoted by an existing one, from the Users screen.
 
-| Script              | Does                                  |
-| ------------------- | ------------------------------------- |
-| `npm run dev`       | Vite dev server                       |
-| `npm run typecheck` | `tsc -b --noEmit`                     |
-| `npm run build`     | Typecheck, then production bundle     |
-| `npm run preview`   | Serve the built bundle                |
+| Script              | Does                              |
+| ------------------- | --------------------------------- |
+| `npm run dev`       | Vite dev server                   |
+| `npm run typecheck` | `tsc -b --noEmit`                 |
+| `npm run build`     | Typecheck, then production bundle |
+| `npm run preview`   | Serve the built bundle            |
 
 ### Configuration and secrets
 
@@ -91,7 +91,7 @@ Both are strict comma-separated allowlists, so **`https://admin.nyumbalink.co.ke
 already works** — assign that domain in Vercel and there is nothing to change
 server-side. Any other origin, every `*.vercel.app` preview URL included, is
 rejected by CORS before Better Auth is even reached: the login POST fails and the
-console looks broken rather than misconfigured. Add such an origin to *both*
+console looks broken rather than misconfigured. Add such an origin to _both_
 variables — `CORS_ORIGIN` for the browser, `BETTER_AUTH_TRUSTED_ORIGINS` for Better
 Auth's own origin check — and restart the API.
 
@@ -127,34 +127,34 @@ safe one-line rollback that leaves every other header in place.
 
 ## What is real and what is not
 
-Ten screens. Roughly half the console runs on live data.
+Eleven screens. Operational administration uses live backend data; the remaining
+sample-only values are explicitly badged.
 
-| Screen            | Real                                                                                        | Demo                                                                        |
-| ----------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| **Dashboard**     | All five headline counts, from `GET /admin/dashboard` (three grouped queries)                 | Growth percentages, both trend charts, subscription mix, activity feed      |
-| **Landlords**     | Pending/approved queues, approve, suspend-instead-of-reject, business name, property counts  | Document checklists, rejection history, bulk-endpoint (loops one at a time)  |
-| **Users**         | List, filter by role and status, change role, suspend with reason, reinstate                 | "Add user" (no create endpoint — explains the real 3-step path)              |
-| **Properties**    | Live listings with landlord, county/town/estate/price/bedroom filters (server-side)          | Draft/hidden/archived rows, view counts, title search, "Add property"       |
-| **Payments**      | —                                                                                            | Everything (Milestone 4: no payments table, no M-Pesa)                      |
-| **Subscriptions** | Landlord count                                                                               | Plans, renewals, status mix (backend returns a constant `"PENDING"`)        |
-| **Reports**       | —                                                                                            | Everything (nothing can report a listing and nowhere stores one)            |
-| **Analytics**     | Which areas rank, and their listing counts, grouped from `GET /properties`                   | Views, visitors, inquiries, favourites, device split                        |
-| **Notifications** | Real notifications from backend API with read/unread states, server-side filtering and pagination, plus browser push notifications | —                                                               |
-| **Settings**      | Your name and phone (`PATCH /users/me`), your password (`PATCH /users/me/password`), sign out | Platform toggles — shown read-only with the reason, not as a fake form      |
+| Screen            | Real                                                                                                                                                                                                       | Demo                                                                        |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| **Dashboard**     | All headline counts (`GET /admin/dashboard`), real open report queue alerts, and live recent audit activity feed                                                                                           | Growth percentages, both trend charts, subscription mix                     |
+| **Landlords**     | Pending/approved queues, approve, suspend-instead-of-reject, business name, property counts                                                                                                                | Document checklists, rejection history, bulk-endpoint (loops one at a time) |
+| **Users**         | List, filter by role and status, change role, suspend with reason, reinstate                                                                                                                               | "Add user" (no create endpoint — explains the real 3-step path)             |
+| **Properties**    | Live listings with landlord, county/town/estate/price/bedroom filters (server-side)                                                                                                                        | Draft/hidden/archived rows, view counts, title search, "Add property"       |
+| **Payments**      | Filterable payment monitoring, revenue series, and manual reconciliation                                                                                                                                   | —                                                                           |
+| **Subscriptions** | Per-property listing terms, capacity, grants, and active/lapsed filtering                                                                                                                                   | —                                                                           |
+| **Reports**       | Real listing reports queue (`GET /admin/reports`), status & reason filtering, search, pagination, property detail drawer, atomic listing hiding and report resolution (`PATCH /admin/reports/:id/resolve`) | —                                                                           |
+| **Audit log**     | Paginated administrative history with target, date, and text filters plus detail inspection                                                                                                                | —                                                                           |
+| **Analytics**     | Which areas rank, and their listing counts, grouped from `GET /properties`                                                                                                                                 | Views, visitors, inquiries, favourites, device split                        |
+| **Notifications** | Real notifications from backend API with read/unread states, server-side filtering and pagination, plus browser push notifications                                                                         | —                                                                           |
+| **Settings**      | Your name and phone (`PATCH /users/me`), your password (`PATCH /users/me/password`), sign out                                                                                                              | Platform toggles — shown read-only with the reason, not as a fake form      |
 
-Three of those demos are fake for a harder reason than a missing endpoint: there
+Two of those demos are fake for a harder reason than a missing endpoint: there
 is nowhere in the schema to put the data.
 
-- **Verification documents** — a landlord submits a national ID *number*. No file
+- **Verification documents** — a landlord submits a national ID _number_. No file
   is uploaded, so there is nothing to review or count.
 - **Rejection history** — approval is one `verified` boolean. There is no rejected
   state and no column for a reason, so a rejection cannot be recorded. The ✗
   action offers the nearest real, reversible power instead: suspend the account
   with a reason.
-- **Reports** — tenants have no way to flag a listing and no table stores one.
 
-The tooltips say which kind each is, because "coming in Milestone 10" and "needs a
-schema change" are different promises.
+Reports are fully backed by Milestone 10 database schema (`ListingReport` & `AdminAuditLog`), API routes, and admin UI.
 
 ### Departures from the mockup, and why
 
@@ -193,6 +193,13 @@ PATCH  /admin/users/:id/suspend         Requires a non-empty reason; CANNOT_SUSP
 PATCH  /admin/users/:id/reinstate       USER_NOT_SUSPENDED when already active
 GET    /admin/landlords                 ?page&limit&verified&status&search
 PATCH  /admin/landlords/:id/approve     Idempotent — takes the *profile* id, not the user id
+GET    /admin/payments                  Paginated payment monitoring
+GET    /admin/payments/revenue          7/30/90-day settled revenue series
+POST   /payments/:id/reconcile          Shared owner/admin recovery endpoint
+GET    /admin/subscriptions             Listing terms and unit capacity
+GET    /admin/reports                   ?page&limit&status&reason&search
+PATCH  /admin/reports/:id/resolve       Review, dismiss, resolve, or hide listing
+GET    /admin/audit-logs                Searchable administrative history
 
 GET    /properties                      ?county&town&estate&minPrice&maxPrice&bedrooms&page&limit
 GET    /properties/:id                  403 PROPERTY_HIDDEN for anything not ACTIVE
@@ -202,10 +209,10 @@ PATCH  /users/me                        Name, phone
 PATCH  /users/me/password               Revokes every other session
 ```
 
-`/admin/payments` and `/admin/reports` appear in `API.md` but are not mounted in
-`routes/admin.js`. Nothing here calls them. `/admin/dashboard` was in the same state
-until this console needed it; it is now implemented, and the client still falls back
-gracefully if it answers 404.
+All admin endpoints listed above are mounted in `routes/admin.js`. Payment
+reconciliation intentionally remains on the shared `/payments/:id/reconcile` route;
+the backend authorizes either the payment owner or an administrator and records an
+admin audit entry for the latter.
 
 Two rate limits shape how this app behaves: 300 requests / 15 min authenticated,
 and 10 auth attempts / 15 min. Bulk approve therefore loops sequentially rather
@@ -219,7 +226,7 @@ Worth keeping, because it explains why nothing in this console fans out and why
 `lib/api/concurrency.ts` exists.
 
 `propertyHubBackend/.env` used to point Prisma at Supabase's pgbouncer pooler with
-`connection_limit=1`. That is Supabase's advice for *serverless* functions, where
+`connection_limit=1`. That is Supabase's advice for _serverless_ functions, where
 each invocation is its own short-lived process. The API is one long-lived container,
 so it gave the whole process a single connection to a database in `eu-central-1` — a
 TCP connect there measures 0.5–2.7s from Nairobi, and a query round trip about a
@@ -267,7 +274,7 @@ state this console has already had to survive. A 404 is an unambiguous signal, s
 403 instead (verified: unauthenticated requests to it return `401
 AUTHENTICATION_REQUIRED`, never 404).
 
-If a screen ever shows *The server couldn't answer* with `HTTP 500 ·
+If a screen ever shows _The server couldn't answer_ with `HTTP 500 ·
 INTERNAL_SERVER_ERROR`, check the API log for `Timed out fetching a new connection
 from the connection pool` before looking anywhere else.
 
