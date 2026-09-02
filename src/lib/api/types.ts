@@ -33,7 +33,11 @@ export const ROLES: Role[] = ["ADMIN", "LANDLORD", "TENANT"];
  */
 export type UserStatus = "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
 
-export const USER_STATUSES: UserStatus[] = ["ACTIVE", "SUSPENDED", "DEACTIVATED"];
+export const USER_STATUSES: UserStatus[] = [
+  "ACTIVE",
+  "SUSPENDED",
+  "DEACTIVATED",
+];
 
 /** The account shape Better Auth returns from sign-in and `get-session`. */
 export type AuthUser = {
@@ -133,7 +137,12 @@ export type AdminLandlord = {
 
 export type PropertyStatus = "DRAFT" | "ACTIVE" | "HIDDEN" | "ARCHIVED";
 
-export const PROPERTY_STATUSES: PropertyStatus[] = ["ACTIVE", "DRAFT", "HIDDEN", "ARCHIVED"];
+export const PROPERTY_STATUSES: PropertyStatus[] = [
+  "ACTIVE",
+  "DRAFT",
+  "HIDDEN",
+  "ARCHIVED",
+];
 
 /**
  * `GET /properties` — deliberately thin, and **role-sensitive on the server**.
@@ -211,7 +220,12 @@ export type PropertyDetail = {
  * are terminal and carry a `settledAt`, which is why revenue filters on `SUCCESS`
  * rather than on the timestamp being present.
  */
-export type PaymentStatus = "PENDING" | "QUEUED" | "SUCCESS" | "FAILED" | "CANCELLED";
+export type PaymentStatus =
+  | "PENDING"
+  | "QUEUED"
+  | "SUCCESS"
+  | "FAILED"
+  | "CANCELLED";
 
 export const PAYMENT_STATUSES: PaymentStatus[] = [
   "PENDING",
@@ -305,7 +319,12 @@ export type PaymentDto = {
 export type AdminPayment = PaymentDto & {
   gatewayReference: string | null;
   checkoutRequestId: string | null;
-  user: { id: string; name: string; email: string; phoneNumber: string | null } | null;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    phoneNumber: string | null;
+  } | null;
 };
 
 /**
@@ -368,7 +387,11 @@ export type AdminSubscription = {
   propertyId: string;
   propertyTitle: string;
   propertyStatus: PropertyStatus;
-  landlord: { id: string; businessName: string | null; mpesaNumber: string | null } | null;
+  landlord: {
+    id: string;
+    businessName: string | null;
+    mpesaNumber: string | null;
+  } | null;
   /** `expiresAt > now`, computed server-side against one clock. */
   active: boolean;
   /** Units the term was bought for. Set on purchase/renewal, incremented by top-ups. */
@@ -426,4 +449,108 @@ export type Notification = {
   isRead: boolean;
   readAt?: string;
   createdAt: string;
+};
+
+// ------------------------------------------------------------------- reports
+
+export type ReportStatus = "OPEN" | "REVIEWING" | "RESOLVED" | "DISMISSED";
+
+export const REPORT_STATUSES: ReportStatus[] = [
+  "OPEN",
+  "REVIEWING",
+  "RESOLVED",
+  "DISMISSED",
+];
+
+export type ReportReason =
+  | "MISLEADING_PHOTOS"
+  | "WRONG_PRICE"
+  | "ALREADY_TAKEN"
+  | "SUSPECTED_SCAM"
+  | "DUPLICATE"
+  | "OTHER";
+
+export const REPORT_REASONS: ReportReason[] = [
+  "MISLEADING_PHOTOS",
+  "WRONG_PRICE",
+  "ALREADY_TAKEN",
+  "SUSPECTED_SCAM",
+  "DUPLICATE",
+  "OTHER",
+];
+
+export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
+  MISLEADING_PHOTOS: "Misleading photos",
+  WRONG_PRICE: "Wrong price",
+  ALREADY_TAKEN: "Already taken",
+  SUSPECTED_SCAM: "Suspected scam",
+  DUPLICATE: "Duplicate listing",
+  OTHER: "Other reason",
+};
+
+export type ReportAction =
+  | "PROPERTY_HIDDEN"
+  | "DISMISSED"
+  | "RESOLVED"
+  | "REVIEWING";
+
+export type AdminReport = {
+  id: string;
+  propertyId: string;
+  reason: ReportReason;
+  description: string | null;
+  status: ReportStatus;
+  action: ReportAction | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt: string | null;
+  resolvedBy: { id: string; name: string; email: string } | null;
+  reporter: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    role: Role;
+    status: UserStatus;
+  };
+  property: {
+    id: string;
+    title: string;
+    status: PropertyStatus;
+    county: string;
+    town: string;
+    estate: string | null;
+    images: string[];
+    landlord: {
+      id: string;
+      userId: string;
+      businessName: string | null;
+      nationalId: string;
+      mpesaNumber: string | null;
+      verified: boolean;
+      name: string | null;
+      email: string | null;
+      phone: string | null;
+      accountStatus: UserStatus;
+    } | null;
+  };
+};
+
+// ---------------------------------------------------------------- audit logs
+
+export type AdminAuditLog = {
+  id: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  metadata: Record<string, unknown> | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  admin: {
+    id: string;
+    name: string;
+    email: string;
+  };
 };

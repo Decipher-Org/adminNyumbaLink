@@ -6,6 +6,7 @@ import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { GuestOnlyRoute, ProtectedRoute } from "@/lib/auth/ProtectedRoute";
 import { NotificationProvider } from "@/lib/notifications/NotificationProvider";
 import Analytics from "@/pages/Analytics";
+import AuditLogs from "@/pages/AuditLogs";
 import Dashboard from "@/pages/Dashboard";
 import Landlords from "@/pages/Landlords";
 import Login from "@/pages/Login";
@@ -49,6 +50,7 @@ export default function App() {
                 <Route path="payments" element={<Payments />} />
                 <Route path="subscriptions" element={<Subscriptions />} />
                 <Route path="reports" element={<Reports />} />
+                <Route path="audit-logs" element={<AuditLogs />} />
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="settings" element={<Settings />} />
