@@ -7,7 +7,6 @@ import type {
   Role,
   UserStatus,
 } from "@/lib/api/types";
-import type { DocumentStatus } from "@/lib/demo/ops";
 import { cn } from "@/lib/utils";
 
 /**
@@ -252,54 +251,6 @@ export function ReportStatusBadge({
   return (
     <Pill tone={entry.tone} className={className}>
       {entry.label}
-    </Pill>
-  );
-}
-
-const DOCUMENT_STATUS_MAP: Record<
-  DocumentStatus,
-  { tone: Tone; label: string }
-> = {
-  RECEIVED: { tone: "success", label: "Received" },
-  MISSING: { tone: "destructive", label: "Missing" },
-  UNREADABLE: { tone: "warning", label: "Unreadable" },
-};
-
-export function DocumentStatusBadge({
-  status,
-  className,
-}: {
-  status: DocumentStatus;
-  className?: string;
-}) {
-  const entry = DOCUMENT_STATUS_MAP[status];
-  return (
-    <Pill tone={entry.tone} className={className}>
-      {entry.label}
-    </Pill>
-  );
-}
-
-/**
- * "2 of 3" document progress. Complete is green, anything short is amber — an
- * incomplete set is the queue's whole reason for existing, so it has to read as
- * needing attention rather than as a neutral count.
- */
-export function DocumentCount({
-  received,
-  required,
-  className,
-}: {
-  received: number;
-  required: number;
-  className?: string;
-}) {
-  return (
-    <Pill
-      tone={received >= required ? "success" : "warning"}
-      className={className}
-    >
-      {received}/{required}
     </Pill>
   );
 }

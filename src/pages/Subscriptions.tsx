@@ -4,7 +4,6 @@ import { AlertTriangle, ArrowRight, CalendarClock, ChevronDown, Download, Wallet
 
 import { PageHeader } from "@/components/app/PageHeader";
 import { Pagination } from "@/components/app/Pagination";
-import { DemoBadge } from "@/components/app/DemoBadge";
 import { EmptyState, ErrorState, TableSkeleton } from "@/components/app/States";
 import { StatCard } from "@/components/app/StatCard";
 import { Pill, PropertyStatusBadge, SubscriptionStatusBadge } from "@/components/app/StatusBadge";
@@ -146,7 +145,6 @@ export default function Subscriptions() {
           <Button variant="outline" onClick={exportRows} disabled={rows.length === 0}>
             <Download />
             Export
-            <DemoBadge feature="export" />
           </Button>
         }
       />

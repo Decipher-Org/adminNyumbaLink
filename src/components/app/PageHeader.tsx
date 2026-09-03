@@ -52,7 +52,7 @@ export function Panel({
 }: {
   title: string;
   description?: string;
-  /** Top-right slot: a range selector, a "View all" link, a demo badge. */
+  /** Top-right slot for page-specific actions. */
   action?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;

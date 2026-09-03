@@ -1,8 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { KeyRound, LogOut, Plug, Save, ShieldCheck } from "lucide-react";
+import { KeyRound, LogOut, Save, ShieldCheck } from "lucide-react";
 
-import { DemoBadge, DemoNotice } from "@/components/app/DemoBadge";
 import { PageHeader, Panel } from "@/components/app/PageHeader";
 import { Spinner } from "@/components/app/States";
 import { Pill, RoleBadge, UserStatusBadge } from "@/components/app/StatusBadge";
@@ -10,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import { API_BASE_URL, ApiError } from "@/lib/api/client";
 import { changeMyPassword, updateMyProfile } from "@/lib/api/me";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -19,15 +17,10 @@ import { formatDate } from "@/lib/format";
 /**
  * Settings.
  *
- * Two of the three panels here are **real**, and they are the only writable
+ * The editable panels are the only writable
  * self-service endpoints in the whole console: `PATCH /users/me` (name, phone) and
  * `PATCH /users/me/password`. Both act on `req.user.id`, so an admin can only ever
  * edit themselves from this screen.
- *
- * The platform section is not real and is not a form that pretends to be one —
- * every control is disabled with the reason beside it. There is no settings table;
- * the values it shows live in the backend's environment configuration, which is not
- * something a browser should be able to write.
  *
  * Nothing sensitive is readable here either. This bundle only knows the API base
  * URL — every secret (the database URL, `BETTER_AUTH_SECRET`, the Resend key) stays
@@ -42,7 +35,7 @@ export default function Settings() {
     <>
       <PageHeader
         title="Settings"
-        description="Your account, this console's connection, and what the platform cannot configure yet."
+        description="Your account and this console's API connection."
         actions={
           <Button variant="outline" onClick={() => void signOut()}>
             <LogOut />
@@ -141,9 +134,6 @@ export default function Settings() {
         </Panel>
       </div>
 
-      <div className="mt-4">
-        <PlatformPanel />
-      </div>
     </>
   );
 }
@@ -351,83 +341,6 @@ function PasswordPanel() {
           </p>
         </div>
       </form>
-    </Panel>
-  );
-}
-
-// ---------------------------------------------------------------- platform
-
-/** Shown as the current server behaviour, not as something this screen can set. */
-const PLATFORM_TOGGLES: { id: string; label: string; note: string; checked: boolean }[] = [
-  {
-    id: "manual-approval",
-    label: "Landlords need manual approval",
-    note: "Currently true and not optional: a landlord profile starts unverified and an admin must approve it.",
-    checked: true,
-  },
-  {
-    id: "email-verification",
-    label: "Require email verification",
-    note: "On. Sign-up sends a one-time code; in this environment the sender only logs it to the server console.",
-    checked: true,
-  },
-  {
-    id: "listing-limits",
-    label: "Paid term required for visibility",
-    note: "On and not optional since Milestone 5: an ACTIVE listing is hidden from everyone but its owner unless the property holds a 30-day term with time left. There is no cap on how many listings a landlord may create — the gate is per property, not per account.",
-    checked: true,
-  },
-  {
-    id: "maintenance",
-    label: "Maintenance mode",
-    note: "Off. There is no maintenance flag; taking the API down is a deployment action.",
-    checked: false,
-  },
-];
-
-function PlatformPanel() {
-  return (
-    <Panel
-      title="Platform"
-      description="How the server behaves today"
-      action={<DemoBadge feature="platformSettings" />}
-    >
-      <DemoNotice feature="platformSettings" className="mb-4" />
-
-      <ul className="space-y-4">
-        {PLATFORM_TOGGLES.map((toggle) => (
-          <li key={toggle.id} className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <Label htmlFor={toggle.id} className="text-foreground">
-                {toggle.label}
-              </Label>
-              <p className="mt-1 text-caption text-muted-foreground">{toggle.note}</p>
-            </div>
-            <Switch
-              id={toggle.id}
-              checked={toggle.checked}
-              disabled
-              aria-label={`${toggle.label} — read only`}
-            />
-          </li>
-        ))}
-      </ul>
-
-      <Separator className="my-4" />
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-3">
-          <Plug aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          <p className="text-caption text-muted-foreground">
-            These switches are read-only rather than fake. A control that moves but changes nothing
-            is worse than one that explains why it cannot.
-          </p>
-        </div>
-        <Button variant="outline" disabled className="shrink-0">
-          <Save />
-          Save platform settings
-        </Button>
-      </div>
     </Panel>
   );
 }

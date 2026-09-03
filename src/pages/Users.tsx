@@ -5,7 +5,6 @@ import {
   Eye,
   Mail,
   Phone,
-  Plus,
   RotateCcw,
   ShieldAlert,
   UserCog,
@@ -14,7 +13,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { DemoBadge } from "@/components/app/DemoBadge";
 import { FormError } from "@/components/app/FormError";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Pagination } from "@/components/app/Pagination";
@@ -110,7 +108,6 @@ export default function Users() {
   const [roleTarget, setRoleTarget] = useState<AdminUser | null>(null);
   const [suspendTarget, setSuspendTarget] = useState<AdminUser | null>(null);
   const [busyIds, setBusyIds] = useState<string[]>([]);
-  const [addOpen, setAddOpen] = useState(false);
 
   const search = useDebouncedValue(searchInput.trim());
 
@@ -205,12 +202,6 @@ export default function Users() {
             <Button variant="outline" onClick={exportRows}>
               <Download />
               Export
-              <DemoBadge feature="export" />
-            </Button>
-            <Button onClick={() => setAddOpen(true)}>
-              <Plus />
-              Add user
-              <DemoBadge feature="createUser" />
             </Button>
           </>
         }
@@ -476,7 +467,6 @@ export default function Users() {
         }}
       />
 
-      <AddUserDialog open={addOpen} onClose={() => setAddOpen(false)} />
     </>
   );
 }
@@ -841,49 +831,6 @@ function SuspendDialog({
             {submitting ? <Spinner /> : <UserX />}
             Suspend account
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/**
- * The mockup's "+ Add User".
- *
- * There is no admin endpoint that creates an account — sign-up is Better Auth's,
- * it needs a password the person chooses, and it refuses a self-assigned ADMIN
- * role. Rather than a form that cannot submit, this says what the real path is.
- */
-function AddUserDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  return (
-    <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add a user</DialogTitle>
-          <DialogDescription>
-            An admin can't create an account yet. There is no endpoint for it, and sign-up needs a
-            password only the person themselves should choose.
-          </DialogDescription>
-        </DialogHeader>
-
-        <ol className="space-y-2 text-body-sm text-muted-foreground">
-          <li>
-            <span className="font-medium text-foreground">1.</span> Ask them to sign up in the main
-            NyumbaLink app and verify their email.
-          </li>
-          <li>
-            <span className="font-medium text-foreground">2.</span> Find them here and use{" "}
-            <span className="font-medium text-foreground">Change role</span> to make them a landlord
-            or an admin.
-          </li>
-          <li>
-            <span className="font-medium text-foreground">3.</span> For a landlord, approve them in
-            the landlord queue once they submit their details.
-          </li>
-        </ol>
-
-        <DialogFooter>
-          <Button onClick={onClose}>Got it</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
