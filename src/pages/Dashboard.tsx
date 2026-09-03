@@ -15,10 +15,7 @@ import { Link } from "react-router-dom";
 import {
   BarChart,
   DonutChart,
-  LineChart,
-  RankedBars,
 } from "@/components/app/charts";
-import { DemoBadge } from "@/components/app/DemoBadge";
 import { PageHeader, Panel } from "@/components/app/PageHeader";
 import { RangeSelect } from "@/components/app/RangeSelect";
 import { StatCard, StatCardSkeleton } from "@/components/app/StatCard";
@@ -27,16 +24,9 @@ import { Button } from "@/components/ui/button";
 import { fetchPlatformCounts, fetchRevenueSeries } from "@/lib/api/admin";
 import { listProperties } from "@/lib/api/properties";
 import type { AdminAuditLog, RevenuePoint } from "@/lib/api/types";
-import {
-  DEMO_DELTAS,
-  DEMO_FALLBACK_AREAS,
-  demoRegistrationsTrend,
-  demoTopAreas,
-} from "@/lib/demo/dashboard";
 import { useAsync } from "@/lib/hooks/use-async";
 import { dateLabel, daysForRange, type RangeKey } from "@/lib/series";
 import {
-  formatCompact,
   formatKes,
   formatKesCompact,
   formatNumber,
@@ -52,10 +42,6 @@ import {
  * fallback cannot produce the money blocks, which is why they are optional on
  * `PlatformCounts` and render as `—` rather than `0` when absent — a zero would read as
  * "nobody has paid".
- *
- * What is still invented is what needs history the platform doesn't keep: the growth
- * percentages, the registrations curve, and the view counts in the areas panel. Each
- * carries its own badge; see `lib/demo/registry.ts`. Administrative activity is real.
  *
  * The property count is worth reading twice: it counts listings at status ACTIVE,
  * so the number is *live listings*, not all listings. The card says "Live
@@ -113,9 +99,8 @@ export default function Dashboard() {
     // without `/admin/dashboard` the first call becomes six, and running the
     // properties fetch alongside them is what tipped this screen into 500s.
     const counts = await fetchPlatformCounts(signal);
-    // The rows are the sample the areas panel groups. `pagination.total` is also
-    // the live-listing count on an older backend, where the grouped endpoint that
-    // now supplies it is absent.
+    // `pagination.total` is the live-listing count on an older backend, where the
+    // grouped endpoint that now supplies it is absent.
     const properties = await listProperties({ limit: 100, signal });
     return { counts, properties };
   }, []);
@@ -147,8 +132,6 @@ export default function Dashboard() {
     0,
   );
 
-  const registrations = useMemo(() => demoRegistrationsTrend(days), [days]);
-
   const activity = useMemo(() => {
     return (recentActivity ?? []).map((log) => ({
       id: log.id,
@@ -157,12 +140,6 @@ export default function Dashboard() {
       at: log.createdAt,
     }));
   }, [recentActivity]);
-
-  const areas = useMemo(() => {
-    const grouped = demoTopAreas(properties?.items ?? []);
-    return grouped.length > 0 ? grouped : DEMO_FALLBACK_AREAS;
-  }, [properties]);
-  const areasAreReal = (properties?.items.length ?? 0) > 0;
 
   const rangeLabel = RANGE_LABELS[range];
 
@@ -247,21 +224,11 @@ export default function Dashboard() {
               label="Total users"
               value={formatNumber(counts?.totalUsers)}
               icon={Users}
-              delta={{
-                value: DEMO_DELTAS.totalUsers,
-                note: "vs previous period",
-                demo: "growthDeltas",
-              }}
             />
             <StatCard
               label="Landlords"
               value={formatNumber(counts?.landlords)}
               icon={ShieldCheck}
-              delta={{
-                value: DEMO_DELTAS.landlords,
-                note: "vs previous period",
-                demo: "growthDeltas",
-              }}
             />
             <StatCard
               label="Live properties"
@@ -269,11 +236,6 @@ export default function Dashboard() {
                 counts?.liveProperties ?? properties?.pagination.total,
               )}
               icon={Building2}
-              delta={{
-                value: DEMO_DELTAS.properties,
-                note: "vs previous period",
-                demo: "growthDeltas",
-              }}
             />
             <StatCard
               label="Active listing terms"
@@ -352,19 +314,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        <Panel
-          title="User registrations"
-          description={`Signups per day, ${rangeLabel}`}
-          action={<DemoBadge feature="registrationsTrend" />}
-          className="lg:col-span-2"
-        >
-          <LineChart
-            points={registrations}
-            ariaLabel={`Sample daily user registrations over the ${rangeLabel}`}
-          />
-        </Panel>
-
+      <div className="mt-4">
         {/*
           Two slices, not three. There is no cancellation in Milestone 5 — a term either
           has time left or it doesn't — and tenant passes are counted in people rather
@@ -462,36 +412,6 @@ export default function Dashboard() {
         </Panel>
       </div>
 
-      <div className="mt-4">
-        {loading && !properties ? (
-          <PanelSkeleton />
-        ) : (
-          <Panel
-            title="Top areas"
-            description={
-              areasAreReal
-                ? "Grouped from live listings. View counts are samples."
-                : "No live listings to group yet — showing sample areas."
-            }
-            action={<DemoBadge feature="views" />}
-            footer={
-              areasAreReal
-                ? `Listing counts cover the ${formatNumber(properties?.items.length)} most recent live listings, not the full catalogue.`
-                : undefined
-            }
-          >
-            <RankedBars
-              rows={areas.map((area) => ({
-                key: `${area.area}-${area.county}`,
-                label: area.area,
-                caption: area.county,
-                value: area.views,
-                valueLabel: `${formatCompact(area.views)} views · ${formatNumber(area.listings)} listings`,
-              }))}
-            />
-          </Panel>
-        )}
-      </div>
     </>
   );
 }

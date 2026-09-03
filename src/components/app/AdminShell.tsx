@@ -38,17 +38,6 @@ import { cn } from "@/lib/utils";
  * makes it impossible to act on the wrong one by mistake.
  */
 
-/** A dot rather than a word: the nav is tight, and the screen itself explains. */
-function DemoDot({ className }: { className?: string }) {
-  return (
-    <span
-      aria-label="preview feature"
-      title="Preview — sample data"
-      className={cn("size-1.5 shrink-0 rounded-full bg-warning", className)}
-    />
-  );
-}
-
 function NavBadge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
@@ -67,7 +56,7 @@ function SidebarLink({
   badge?: number;
   onNavigate?: () => void;
 }) {
-  const { icon: Icon, label, to, demo } = item;
+  const { icon: Icon, label, to } = item;
 
   return (
     <NavLink
@@ -87,11 +76,7 @@ function SidebarLink({
     >
       <Icon className="size-4.5 shrink-0" />
       <span className="truncate">{label}</span>
-      {badge > 0 ? (
-        <NavBadge count={badge} />
-      ) : demo ? (
-        <DemoDot className="ml-auto" />
-      ) : null}
+      {badge > 0 ? <NavBadge count={badge} /> : null}
     </NavLink>
   );
 }
@@ -354,7 +339,7 @@ export function AdminShell() {
           <ul className="flex">
             {ADMIN_NAV.filter((item) => item.primary)
               .slice(0, 4)
-              .map(({ to, label, icon: Icon, demo }) => (
+              .map(({ to, label, icon: Icon }) => (
                 <li key={to} className="flex-1">
                   <NavLink
                     to={to}
@@ -373,8 +358,6 @@ export function AdminShell() {
                         aria-hidden="true"
                         className="absolute top-2 right-1/4 size-1.5 rounded-full bg-destructive"
                       />
-                    ) : demo ? (
-                      <DemoDot className="absolute top-2 right-1/4" />
                     ) : null}
                   </NavLink>
                 </li>

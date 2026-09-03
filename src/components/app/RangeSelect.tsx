@@ -8,12 +8,10 @@ import {
 } from "@/components/ui/select";
 
 /**
- * The date-range selector the design puts in the top right of the dashboard,
- * payments and analytics screens.
+ * The date-range selector used by dashboard and payment revenue views.
  *
- * It is honest about its reach: on the dashboard and Payments the range drives real
- * revenue, on Analytics it drives the demo series, and the live user and property
- * counts beside them are all-time totals that no range can narrow — nothing in
+ * The range drives live revenue. User and property counts beside it are all-time
+ * totals that no range can narrow — nothing in
  * `GET /admin/users` accepts a date window. The screens say which cards the range
  * applies to rather than implying it filters everything.
  */

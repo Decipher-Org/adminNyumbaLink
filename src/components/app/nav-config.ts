@@ -1,16 +1,11 @@
 /**
  * The admin console's navigation.
  *
- * `demo` marks a destination whose screen is sample data — the shell renders a
- * small dot on those items, so the nav itself is honest about what works rather
- * than the operator finding out after the click.
- *
  * `primary` picks the four items that get a slot in the mobile tab bar; the fifth
  * slot is a "More" button that opens the full list, so nothing is desktop-only.
  */
 
 import {
-  BarChart3,
   ClipboardList,
   Bell,
   Building2,
@@ -24,14 +19,10 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 
-import type { DemoFeatureId } from "@/lib/demo/registry";
-
 export type NavItem = {
   to: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
-  /** Present when the destination is sample data. */
-  demo?: DemoFeatureId;
   /** Gets a slot in the mobile tab bar. Keep this to four. */
   primary?: boolean;
   /** One line, shown in the mobile sheet where there is room for it. */
@@ -92,13 +83,6 @@ export const ADMIN_NAV: NavItem[] = [
     hint: "Administrative action history",
   },
   {
-    to: "/analytics",
-    label: "Analytics",
-    icon: BarChart3,
-    demo: "analytics",
-    hint: "Traffic and engagement",
-  },
-  {
     to: "/notifications",
     label: "Notifications",
     icon: Bell,
@@ -108,8 +92,7 @@ export const ADMIN_NAV: NavItem[] = [
     to: "/settings",
     label: "Settings",
     icon: Settings,
-    demo: "platformSettings",
-    hint: "Your account and platform configuration",
+    hint: "Your account and console connection",
   },
 ];
 

@@ -4,7 +4,6 @@ import { Download, Receipt, RefreshCw, TrendingUp, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 import { BarChart } from "@/components/app/charts";
-import { DemoBadge } from "@/components/app/DemoBadge";
 import { PageHeader, Panel } from "@/components/app/PageHeader";
 import { Pagination } from "@/components/app/Pagination";
 import { RangeSelect } from "@/components/app/RangeSelect";
@@ -223,7 +222,6 @@ export default function Payments() {
             <Button variant="outline" onClick={exportRows} disabled={rows.length === 0}>
               <Download />
               Export
-              <DemoBadge feature="export" />
             </Button>
           </>
         }

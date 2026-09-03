@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Check,
   Download,
   Eye,
-  FileText,
   Inbox,
   Phone,
   ShieldCheck,
@@ -12,7 +11,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { DemoBadge, DemoNotice } from "@/components/app/DemoBadge";
 import { FormError } from "@/components/app/FormError";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Pagination } from "@/components/app/Pagination";
@@ -20,8 +18,6 @@ import { SearchInput, Toolbar } from "@/components/app/SearchInput";
 import { EmptyState, ErrorState, Spinner, TableSkeleton } from "@/components/app/States";
 import {
   ApprovalBadge,
-  DocumentCount,
-  DocumentStatusBadge,
   UserStatusBadge,
 } from "@/components/app/StatusBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -56,7 +52,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { approveLandlord, listLandlords, suspendUser } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { USER_STATUSES, type AdminLandlord, type UserStatus } from "@/lib/api/types";
-import { demoDocuments, demoRejections } from "@/lib/demo/ops";
 import { downloadCsv } from "@/lib/export-csv";
 import { formatDate, formatEnum, formatNumber, formatRelative, initials } from "@/lib/format";
 import { useAsync } from "@/lib/hooks/use-async";
@@ -65,20 +60,9 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 /**
  * Landlord approval queue.
  *
- * Approval is real: `PATCH /admin/landlords/:id/approve` flips `verified`, which is
- * the gate that lets a landlord publish a listing at all. Everything else the design
- * puts on this screen runs into the schema:
- *
- *  - **Location.** `LandlordProfile` has no county or town, and there is no join
- *    that would give one, so the design's Location column and "All locations" filter
- *    cannot be populated. They are replaced by the business name and a real account
- *    status filter rather than a column of dashes.
- *  - **Documents.** A landlord submits a `nationalId` string; no file is uploaded.
- *    The document counts are samples, and the tab that sorts by them is badged.
- *  - **Rejection.** `verified` is one boolean with no rejected state and nowhere to
- *    store a reason. So the design's ✗ action does not pretend to reject: it offers
- *    the real, reversible power an admin does have over a bad application —
- *    suspending the account, with a reason that is stored and shown back.
+ * Approval is backed by `PATCH /admin/landlords/:id/approve`; account suspension is
+ * backed by the admin user endpoint. The page only presents fields stored by the
+ * landlord and user models.
  *
  * An "Approved" tab is added to the design's three. `?verified=true` is free, and a
  * queue you cannot look behind makes it impossible to check your own work.
@@ -89,7 +73,7 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
  * says "with a live term" rather than repeating the wire field's word, "lapsed".
  */
 
-type TabKey = "pending" | "documents" | "approved" | "rejections";
+type TabKey = "pending" | "approved";
 const PAGE_SIZE = 10;
 
 export default function Landlords() {
@@ -104,7 +88,6 @@ export default function Landlords() {
   const [bulkRunning, setBulkRunning] = useState(false);
 
   const search = useDebouncedValue(searchInput.trim());
-  const onList = tab !== "rejections";
   const verified = tab === "approved";
 
   // Any filter change invalidates the page number — page 4 of a narrowed result set
@@ -116,7 +99,6 @@ export default function Landlords() {
 
   const { data, error, loading, reload, setData } = useAsync(
     async (signal) => {
-      if (!onList) return null;
       return listLandlords({
         page,
         limit: PAGE_SIZE,
@@ -126,30 +108,14 @@ export default function Landlords() {
         signal,
       });
     },
-    [onList, verified, page, search, accountStatus],
+    [verified, page, search, accountStatus],
   );
 
   const rows = data?.items ?? [];
   const pagination = data?.pagination;
 
-  /**
-   * The documents tab reorders the same pending page so incomplete sets come first,
-   * rather than filtering them out — filtering client-side would leave the server's
-   * "of 15" contradicting a shorter list, and an operator counting rows would be
-   * counting the wrong thing.
-   */
-  const displayRows = useMemo(() => {
-    if (tab !== "documents") return rows;
-    return [...rows].sort((a, b) => {
-      const left = demoDocuments(a.id);
-      const right = demoDocuments(b.id);
-      return left.received - left.required - (right.received - right.required);
-    });
-  }, [rows, tab]);
-
-  const rejections = useMemo(() => demoRejections(), []);
-
-  const selectableIds = tab === "pending" || tab === "documents" ? rows.map((row) => row.id) : [];
+  const displayRows = rows;
+  const selectableIds = tab === "pending" ? rows.map((row) => row.id) : [];
   const allSelected = selectableIds.length > 0 && selected.length === selectableIds.length;
 
   function toggleRow(id: string) {
@@ -161,7 +127,7 @@ export default function Landlords() {
   /** Drop the row from the queue it no longer belongs in, and fix the total. */
   function removeRow(id: string) {
     setData((previous) => {
-      if (!previous) return null;
+      if (!previous) return undefined;
       const items = previous.items.filter((item) => item.id !== id);
       const total = Math.max(0, previous.pagination.total - 1);
       return {
@@ -241,22 +207,7 @@ export default function Landlords() {
   }
 
   function exportRows() {
-    const source = tab === "rejections" ? [] : rows;
-    if (tab === "rejections") {
-      downloadCsv({
-        filename: "landlord-rejections-sample.csv",
-        columns: ["Name", "Location", "Reason", "Submitted", "Rejected"],
-        rows: rejections.map((row) => [
-          row.name,
-          row.location,
-          row.reason,
-          formatDate(row.submittedAt),
-          formatDate(row.rejectedAt),
-        ]),
-        scopeNote: "Sample data — the platform cannot record a rejection.",
-      });
-      return;
-    }
+    const source = rows;
 
     downloadCsv({
       filename: `landlords-${tab}-page-${page}.csv`,
@@ -295,7 +246,7 @@ export default function Landlords() {
     });
   }
 
-  const pendingCount = tab === "pending" || tab === "documents" ? pagination?.total : undefined;
+  const pendingCount = tab === "pending" ? pagination?.total : undefined;
 
   return (
     <>
@@ -307,7 +258,6 @@ export default function Landlords() {
             <Button variant="outline" onClick={exportRows}>
               <Download />
               Export
-              <DemoBadge feature="export" />
             </Button>
           </>
         }
@@ -322,27 +272,13 @@ export default function Landlords() {
               Pending approval
               {pendingCount !== undefined && tab === "pending" ? ` (${formatNumber(pendingCount)})` : ""}
             </TabsTrigger>
-            <TabsTrigger value="documents" className="gap-1.5">
-              Documents
-              <span aria-hidden="true" className="size-1.5 rounded-full bg-warning" />
-            </TabsTrigger>
             <TabsTrigger value="approved">Approved</TabsTrigger>
-            <TabsTrigger value="rejections" className="gap-1.5">
-              Rejection history
-              <span aria-hidden="true" className="size-1.5 rounded-full bg-warning" />
-            </TabsTrigger>
           </TabsList>
         </div>
       </Tabs>
 
-      {tab === "documents" ? <DemoNotice feature="landlordDocuments" className="mt-4" /> : null}
-      {tab === "rejections" ? <DemoNotice feature="rejections" className="mt-4" /> : null}
-
       <section className="mt-4 rounded-xl border border-border bg-card">
-        {tab === "rejections" ? (
-          <RejectionHistory rows={rejections} />
-        ) : (
-          <>
+        <>
             <Toolbar>
               <SearchInput
                 value={searchInput}
@@ -374,7 +310,6 @@ export default function Landlords() {
                     {bulkRunning ? <Spinner /> : <Check />}
                     Approve {selected.length}
                   </Button>
-                  <DemoBadge feature="bulkActions" />
                 </div>
               ) : null}
             </Toolbar>
@@ -425,7 +360,6 @@ export default function Landlords() {
                         ) : null}
                         <TableHead>Landlord</TableHead>
                         <TableHead>Business</TableHead>
-                        <TableHead>Documents</TableHead>
                         <TableHead className="text-right">Properties</TableHead>
                         <TableHead>Registered</TableHead>
                         <TableHead>Status</TableHead>
@@ -434,7 +368,6 @@ export default function Landlords() {
                     </TableHeader>
                     <TableBody>
                       {displayRows.map((row) => {
-                        const documents = demoDocuments(row.id);
                         const busy = busyIds.includes(row.id);
 
                         return (
@@ -455,13 +388,6 @@ export default function Landlords() {
 
                             <TableCell className="text-muted-foreground">
                               {row.businessName || "—"}
-                            </TableCell>
-
-                            <TableCell>
-                              <DocumentCount
-                                received={documents.received}
-                                required={documents.required}
-                              />
                             </TableCell>
 
                             <TableCell className="text-right tabular-nums">
@@ -524,7 +450,6 @@ export default function Landlords() {
                 {/* Cards below md — the same actions, at thumb size. */}
                 <ul className="divide-y divide-border md:hidden">
                   {displayRows.map((row) => {
-                    const documents = demoDocuments(row.id);
                     const busy = busyIds.includes(row.id);
 
                     return (
@@ -546,10 +471,6 @@ export default function Landlords() {
                               {row.accountStatus !== "ACTIVE" ? (
                                 <UserStatusBadge status={row.accountStatus} />
                               ) : null}
-                              <DocumentCount
-                                received={documents.received}
-                                required={documents.required}
-                              />
                             </div>
 
                             <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1 text-caption">
@@ -616,8 +537,7 @@ export default function Landlords() {
                 ) : null}
               </>
             )}
-          </>
-        )}
+        </>
       </section>
 
       <LandlordDetailSheet
@@ -627,7 +547,7 @@ export default function Landlords() {
         busy={detail ? busyIds.includes(detail.id) : false}
       />
 
-      <RejectDialog
+      <SuspendDialog
         landlord={rejecting}
         onClose={() => setRejecting(null)}
         onSuspended={(updated) => {
@@ -641,7 +561,7 @@ export default function Landlords() {
                       : item,
                   ),
                 }
-              : null,
+              : undefined,
           );
         }}
       />
@@ -670,7 +590,7 @@ function LandlordIdentity({ landlord }: { landlord: AdminLandlord }) {
   );
 }
 
-/** Everything the API actually knows about one landlord, plus the sample documents. */
+/** Everything the API currently exposes about one landlord. */
 function LandlordDetailSheet({
   landlord,
   onClose,
@@ -682,8 +602,6 @@ function LandlordDetailSheet({
   onApprove: (landlord: AdminLandlord) => void;
   busy: boolean;
 }) {
-  const documents = landlord ? demoDocuments(landlord.id) : null;
-
   return (
     <Sheet open={Boolean(landlord)} onOpenChange={(open) => (open ? undefined : onClose())}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
@@ -691,7 +609,7 @@ function LandlordDetailSheet({
           <SheetTitle>Landlord details</SheetTitle>
         </SheetHeader>
 
-        {landlord && documents ? (
+        {landlord ? (
           <div className="space-y-6 px-4 pb-8">
             <div className="flex items-center gap-3">
               <Avatar className="size-12">
@@ -733,33 +651,6 @@ function LandlordDetailSheet({
                 value={`${formatDate(landlord.createdAt)} · ${formatRelative(landlord.createdAt)}`}
               />
             </dl>
-
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-body-sm font-semibold text-foreground">
-                  Verification documents
-                </h3>
-                <DemoBadge feature="landlordDocuments" />
-              </div>
-              <ul className="mt-2.5 space-y-2">
-                {documents.items.map((item) => (
-                  <li
-                    key={item.name}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
-                  >
-                    <span className="flex min-w-0 items-center gap-2 text-body-sm text-foreground">
-                      <FileText aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                      <span className="truncate">{item.name}</span>
-                    </span>
-                    <DocumentStatusBadge status={item.status} />
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-2 text-caption text-muted-foreground">
-                No files are stored on the platform. Approval is a judgement on the details above —
-                the national ID number is the only evidence the backend keeps.
-              </p>
-            </div>
 
             {!landlord.verified ? (
               <Button className="w-full" onClick={() => onApprove(landlord)} disabled={busy}>
@@ -843,7 +734,7 @@ function SubscriptionBreakdown({ landlord }: { landlord: AdminLandlord }) {
  * is required by the backend and is not a throwaway — it is shown back on the user
  * record.
  */
-function RejectDialog({
+function SuspendDialog({
   landlord,
   onClose,
   onSuspended,
@@ -893,11 +784,10 @@ function RejectDialog({
     <Dialog open={Boolean(landlord)} onOpenChange={(open) => (open ? undefined : close())}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Reject this application</DialogTitle>
+          <DialogTitle>Suspend this landlord account</DialogTitle>
           <DialogDescription>
-            A rejection can't be recorded — approval is a single flag with no rejected state and
-            nowhere to store a reason. Leaving the landlord unapproved already blocks them from
-            publishing.
+            Suspension signs this landlord out, blocks future sign-in, and records the reason on
+            their account. It can be reversed from the Users screen.
           </DialogDescription>
         </DialogHeader>
 
@@ -905,9 +795,8 @@ function RejectDialog({
           <div className="flex items-start gap-3 rounded-lg border border-border bg-surface px-3 py-2.5">
             <UserX aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
             <p className="text-body-sm text-muted-foreground">
-              What you <em>can</em> do is suspend the account. That blocks sign-in immediately, ends
-              every session they have open, and stores your reason on the record. It is reversible
-              from the Users screen.
+              Suspending the account does not change existing listing statuses. Review those
+              separately if they also need moderation.
             </p>
           </div>
 
@@ -951,56 +840,5 @@ function RejectDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/** The design's third tab. Sample rows — see the notice above the table. */
-function RejectionHistory({ rows }: { rows: ReturnType<typeof demoRejections> }) {
-  return (
-    <>
-      <div className="hidden md:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Applicant</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Reason</TableHead>
-              <TableHead>Submitted</TableHead>
-              <TableHead>Rejected</TableHead>
-              <TableHead>By</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell className="font-medium text-foreground">{row.name}</TableCell>
-                <TableCell className="text-muted-foreground">{row.location}</TableCell>
-                <TableCell className="max-w-xs text-muted-foreground">{row.reason}</TableCell>
-                <TableCell className="whitespace-nowrap text-muted-foreground">
-                  {formatDate(row.submittedAt)}
-                </TableCell>
-                <TableCell className="whitespace-nowrap text-muted-foreground">
-                  {formatDate(row.rejectedAt)}
-                </TableCell>
-                <TableCell className="text-muted-foreground">{row.rejectedBy}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      <ul className="divide-y divide-border md:hidden">
-        {rows.map((row) => (
-          <li key={row.id} className="p-4">
-            <p className="text-body-sm font-medium text-foreground">{row.name}</p>
-            <p className="text-caption text-muted-foreground">{row.location}</p>
-            <p className="mt-2 text-body-sm text-foreground">{row.reason}</p>
-            <p className="mt-2 text-caption text-muted-foreground">
-              Rejected {formatDate(row.rejectedAt)} by {row.rejectedBy}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </>
   );
 }

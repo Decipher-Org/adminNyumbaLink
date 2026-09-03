@@ -6,26 +6,16 @@ import {
   Filter,
   ImageOff,
   MapPin,
-  Plus,
   SlidersHorizontal,
   X,
 } from "lucide-react";
 
-import { DemoBadge, DemoNotice, DemoRowMark } from "@/components/app/DemoBadge";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Pagination } from "@/components/app/Pagination";
 import { SearchInput, Toolbar } from "@/components/app/SearchInput";
 import { EmptyState, ErrorState, Spinner, TableSkeleton } from "@/components/app/States";
 import { Pill, PropertyStatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -50,15 +40,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getProperty, searchPropertiesWithLandlord } from "@/lib/api/properties";
-import { PROPERTY_STATUSES, type PropertyStatus } from "@/lib/api/types";
-import { demoNonLiveProperties, demoPropertyViews } from "@/lib/demo/ops";
+import type { PropertyStatus } from "@/lib/api/types";
 import { downloadCsv } from "@/lib/export-csv";
 import {
-  formatCompact,
   formatDate,
   formatKes,
   formatLocation,
-  formatNumber,
 } from "@/lib/format";
 import { useAsync } from "@/lib/hooks/use-async";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
@@ -67,25 +54,10 @@ import { COASTAL_COUNTIES } from "@/lib/locations";
 /**
  * Properties Management.
  *
- * The awkward screen, and worth reading the whole comment before changing it.
- *
- * `GET /properties` is the public catalogue. It branches on role, and an admin
- * lands in the `else` branch where `status = "ACTIVE"` is hardcoded — so **the API
- * cannot show an admin a draft, hidden or archived listing**, with any filter or
- * flag. There is no admin properties endpoint yet either. What this screen does
- * about that:
- *
- *  - **Live listings are real**, and use the Milestone 6 `/search` endpoint for
- *    keyword, county/town/rent/bedroom filtering across the catalogue.
- *  - **The landlord column is real**, fetched per row from the detail endpoint,
- *    because the list serialiser has no landlord field. Bounded to the visible page.
- *  - **Non-live rows are samples**, marked individually in the table, and the
- *    status filter says as much. They only appear on page one, so paging through
- *    the real catalogue doesn't repeat them.
- *  - **Views are samples** — nothing increments a view counter yet.
+ * Every row comes from the live catalogue and the landlord relation is fetched
+ * for the visible page. Draft, hidden, and archived listings are intentionally
+ * absent until the backend exposes an admin listing endpoint for those states.
  */
-
-type StatusFilter = PropertyStatus | "all";
 
 type PropertyRow = {
   id: string;
@@ -99,10 +71,7 @@ type PropertyRow = {
   rentFrom: number | null;
   totalUnits: number | null;
   availableUnits: number | null;
-  views: number;
   createdAt: string;
-  /** True for a row that does not exist in the database. */
-  demo: boolean;
 };
 
 type ServerFilters = {
@@ -128,24 +97,18 @@ const PAGE_SIZE = 10;
 export default function Properties() {
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
   const [filters, setFilters] = useState<ServerFilters>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [detail, setDetail] = useState<PropertyRow | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
 
   const search = useDebouncedValue(searchInput.trim());
 
-  // Live rows are only worth fetching when the filter could include them.
-  const wantsLive = status === "all" || status === "ACTIVE";
-
   useEffect(() => {
     setPage(1);
-  }, [status, filters]);
+  }, [filters]);
 
   const { data, error, loading, reload } = useAsync(
     async (signal) => {
-      if (!wantsLive) return null;
       return searchPropertiesWithLandlord({
         page,
         limit: PAGE_SIZE,
@@ -159,7 +122,7 @@ export default function Properties() {
         signal,
       });
     },
-    [wantsLive, page, filters, search],
+    [page, filters, search],
   );
 
   const liveRows = useMemo<PropertyRow[]>(
@@ -176,43 +139,12 @@ export default function Properties() {
         rentFrom: item.unitsFrom,
         totalUnits: item.totalUnits,
         availableUnits: item.availableUnits,
-        views: demoPropertyViews(item.id),
         createdAt: item.createdAt,
-        demo: false,
       })),
     [data],
   );
 
-  /**
-   * Sample rows for the statuses the API withholds. Page one only — they are not
-   * part of the server's pagination, so repeating them on page two would inflate
-   * every page by six.
-   */
-  const demoRows = useMemo<PropertyRow[]>(() => {
-    if (status === "ACTIVE") return [];
-    if (wantsLive && page !== 1) return [];
-
-    return demoNonLiveProperties()
-      .filter((row) => status === "all" || row.status === status)
-      .map((row) => ({
-        id: row.id,
-        title: row.title,
-        county: row.county,
-        town: row.town,
-        estate: row.estate,
-        status: row.status,
-        image: null,
-        landlordName: row.landlordName,
-        rentFrom: row.unitsFrom,
-        totalUnits: null,
-        availableUnits: null,
-        views: row.views,
-        createdAt: row.createdAt,
-        demo: true,
-      }));
-  }, [status, wantsLive, page]);
-
-  const rows = useMemo(() => [...liveRows, ...demoRows], [liveRows, demoRows]);
+  const rows = liveRows;
 
   const pagination = data?.pagination;
   const activeFilterCount = Object.values(filters).filter((value) => value.trim() !== "").length;
@@ -231,7 +163,6 @@ export default function Properties() {
         "Units",
         "Available",
         "Created",
-        "Sample row",
       ],
       rows: rows.map((row) => [
         row.title,
@@ -244,11 +175,10 @@ export default function Properties() {
         row.totalUnits ?? "",
         row.availableUnits ?? "",
         formatDate(row.createdAt),
-        row.demo ? "yes" : "no",
       ]),
       scopeNote: pagination
-        ? `Page ${page} of live listings (${pagination.total} total) plus sample non-live rows. View counts are omitted because they are not measured.`
-        : "Sample non-live rows only — the API does not return these statuses to an admin.",
+        ? `Page ${page} only — ${rows.length} of ${pagination.total} live listings.`
+        : undefined,
     });
   }
 
@@ -262,18 +192,10 @@ export default function Properties() {
             <Button variant="outline" onClick={exportRows}>
               <Download />
               Export
-              <DemoBadge feature="export" />
-            </Button>
-            <Button onClick={() => setAddOpen(true)}>
-              <Plus />
-              Add property
-              <DemoBadge feature="createProperty" />
             </Button>
           </>
         }
       />
-
-      {status !== "ACTIVE" ? <DemoNotice feature="propertyStatusFilter" className="mb-4" /> : null}
 
       <section className="rounded-xl border border-border bg-card">
         <Toolbar>
@@ -283,20 +205,6 @@ export default function Properties() {
             placeholder="Search live listings by title or area"
             className="sm:min-w-64 sm:flex-1"
           />
-
-          <Select value={status} onValueChange={(value) => setStatus(value as StatusFilter)}>
-            <SelectTrigger className="w-full sm:w-40" aria-label="Listing status">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              {PROPERTY_STATUSES.map((entry) => (
-                <SelectItem key={entry} value={entry}>
-                  {entry === "ACTIVE" ? "Active (live)" : `${titleCase(entry)} (sample)`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
 
           <Button variant="outline" onClick={() => setFiltersOpen(true)} className="w-full sm:w-auto">
             <SlidersHorizontal />
@@ -376,12 +284,6 @@ export default function Properties() {
                     <TableHead>Landlord</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">
-                      <span className="inline-flex items-center gap-1.5">
-                        Views
-                        <DemoBadge feature="views" />
-                      </span>
-                    </TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -398,13 +300,7 @@ export default function Properties() {
                         {formatLocation(row)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <PropertyStatusBadge status={row.status} />
-                          {row.demo ? <DemoRowMark feature="propertyStatusFilter" /> : null}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">
-                        {formatCompact(row.views)}
+                        <PropertyStatusBadge status={row.status} />
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
@@ -429,7 +325,6 @@ export default function Properties() {
 
                   <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                     <PropertyStatusBadge status={row.status} />
-                    {row.demo ? <DemoRowMark feature="propertyStatusFilter" /> : null}
                   </div>
 
                   <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1 text-caption">
@@ -438,10 +333,6 @@ export default function Properties() {
                       <dd className="min-w-0 truncate text-foreground">
                         {row.landlordName ?? "Not shared"}
                       </dd>
-                    </div>
-                    <div className="flex gap-1">
-                      <dt className="text-muted-foreground">Views</dt>
-                      <dd className="text-foreground tabular-nums">{formatCompact(row.views)}</dd>
                     </div>
                     <div className="flex gap-1">
                       <dt className="text-muted-foreground">Listed</dt>
@@ -462,7 +353,7 @@ export default function Properties() {
               ))}
             </ul>
 
-            {wantsLive && pagination ? (
+            {pagination ? (
               <Pagination
                 page={pagination.page || page}
                 limit={pagination.limit || PAGE_SIZE}
@@ -487,7 +378,6 @@ export default function Properties() {
 
       <PropertyDetailSheet row={detail} onClose={() => setDetail(null)} />
 
-      <AddPropertyDialog open={addOpen} onClose={() => setAddOpen(false)} />
     </>
   );
 }
@@ -691,13 +581,10 @@ function Field({
 /**
  * Full listing detail.
  *
- * Only fetched for a real row — a sample row has no id the API knows, and asking
- * for one would 404. `GET /properties/:id` also answers `403 PROPERTY_HIDDEN` for
- * anything not ACTIVE, which is why the sheet handles an error by falling back to
- * the row it already has rather than showing a failure.
+ * The list only contains live rows, so every row has a detail endpoint.
  */
 function PropertyDetailSheet({ row, onClose }: { row: PropertyRow | null; onClose: () => void }) {
-  const id = row && !row.demo ? row.id : null;
+  const id = row?.id ?? null;
 
   const { data: detail, loading } = useAsync(
     async (signal) => (id ? getProperty(id, signal) : null),
@@ -730,7 +617,6 @@ function PropertyDetailSheet({ row, onClose }: { row: PropertyRow | null; onClos
             <div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <PropertyStatusBadge status={row.status} />
-                {row.demo ? <DemoRowMark feature="propertyStatusFilter" /> : null}
               </div>
               <h3 className="mt-2 text-h3 text-foreground">{row.title}</h3>
               <p className="mt-1 flex items-center gap-1.5 text-body-sm text-muted-foreground">
@@ -761,11 +647,7 @@ function PropertyDetailSheet({ row, onClose }: { row: PropertyRow | null; onClos
                 value={row.rentFrom ? formatKes(row.rentFrom) : "No units priced yet"}
               />
               <DetailRow label="Listed" value={formatDate(row.createdAt)} />
-              <DetailRow
-                label="Views"
-                value={`${formatNumber(row.views)} (sample — nothing counts views yet)`}
-              />
-              {!row.demo ? <DetailRow label="Listing ID" value={row.id} /> : null}
+              <DetailRow label="Listing ID" value={row.id} />
             </dl>
 
             <div>
@@ -794,10 +676,6 @@ function PropertyDetailSheet({ row, onClose }: { row: PropertyRow | null; onClos
                     </li>
                   ))}
                 </ul>
-              ) : row.demo ? (
-                <p className="mt-2 text-body-sm text-muted-foreground">
-                  This is a sample row, so it has no units to show.
-                </p>
               ) : (
                 <p className="mt-2 text-body-sm text-muted-foreground">
                   No unit types have been added to this listing yet.
@@ -818,38 +696,6 @@ function DetailRow({ label, value }: { label: string; value: string | null | und
       <dd className="min-w-0 text-right font-medium break-words text-foreground">{value || "—"}</dd>
     </div>
   );
-}
-
-/** The mockup's "+ Add Property". The endpoint refuses an admin outright. */
-function AddPropertyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  return (
-    <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add a property</DialogTitle>
-          <DialogDescription>
-            An admin can't create a listing. Publishing requires a verified landlord profile, and an
-            admin account doesn't have one — the request is refused before it reaches the database.
-          </DialogDescription>
-        </DialogHeader>
-
-        <p className="text-body-sm text-muted-foreground">
-          To get a listing published: approve the landlord in the landlord queue, then have them add
-          it from their own account. Posting on someone's behalf needs an endpoint that doesn't
-          exist yet.
-        </p>
-
-        <DialogFooter>
-          <Button onClick={onClose}>Got it</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/** "ARCHIVED" -> "Archived". Local because it only ever sees a status enum. */
-function titleCase(value: string): string {
-  return value.charAt(0) + value.slice(1).toLowerCase();
 }
 
 /**

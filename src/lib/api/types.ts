@@ -11,10 +11,8 @@
  *  - the admin landlord adds the identity being vouched for (`name`, `email`,
  *    `nationalId`) plus `accountStatus`, which the public view hides.
  *
- * Nothing invented lives here. Fields the mockup shows but the backend has no
- * column for — document counts, rejection reasons, view counts, growth deltas —
- * belong to `lib/demo/`, and every one of them is registered in
- * `lib/demo/registry.ts`.
+ * Nothing invented lives here. Fields that the backend does not expose are omitted
+ * from the console rather than represented by client-generated values.
  *
  * Payments, revenue and subscriptions used to be in that list. Milestones 4 and 5
  * built them, so their types are down at the bottom of this file, mirroring

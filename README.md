@@ -3,13 +3,9 @@
 The admin console for NyumbaLink — React 19 + Vite + Tailwind 4 + shadcn/ui, talking
 to `propertyHubBackend`.
 
-The console covers the whole design: implemented backend capabilities are wired
-to the real API, while unavailable capabilities are explicitly labelled as demos.
-
-**Every invented number is badged.** An operator suspends accounts and approves
-landlords on the strength of what this screen tells them, so a fake figure that
-looks real is not a cosmetic problem. Hover any `Sample` badge and it names the
-milestone that will make it real; whole-screen demos lead with a banner instead.
+Every operational value displayed by the console comes from the backend API.
+Capabilities without a persisted backend model are omitted instead of represented
+with generated data or nonfunctional controls.
 
 ---
 
@@ -127,32 +123,20 @@ safe one-line rollback that leaves every other header in place.
 
 ## What is real and what is not
 
-Eleven screens. Operational administration uses live backend data; the remaining
-sample-only values are explicitly badged.
+Ten authenticated screens use live backend data.
 
-| Screen            | Real                                                                                                                                                                                                       | Demo                                                                        |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| **Dashboard**     | All headline counts (`GET /admin/dashboard`), real open report queue alerts, and live recent audit activity feed                                                                                           | Growth percentages, both trend charts, subscription mix                     |
-| **Landlords**     | Pending/approved queues, approve, suspend-instead-of-reject, business name, property counts                                                                                                                | Document checklists, rejection history, bulk-endpoint (loops one at a time) |
-| **Users**         | List, filter by role and status, change role, suspend with reason, reinstate                                                                                                                               | "Add user" (no create endpoint — explains the real 3-step path)             |
-| **Properties**    | Live listings with landlord, county/town/estate/price/bedroom filters (server-side)                                                                                                                        | Draft/hidden/archived rows, view counts, title search, "Add property"       |
-| **Payments**      | Filterable payment monitoring, revenue series, and manual reconciliation                                                                                                                                   | —                                                                           |
-| **Subscriptions** | Per-property listing terms, capacity, grants, and active/lapsed filtering                                                                                                                                   | —                                                                           |
-| **Reports**       | Real listing reports queue (`GET /admin/reports`), status & reason filtering, search, pagination, property detail drawer, atomic listing hiding and report resolution (`PATCH /admin/reports/:id/resolve`) | —                                                                           |
-| **Audit log**     | Paginated administrative history with target, date, and text filters plus detail inspection                                                                                                                | —                                                                           |
-| **Analytics**     | Which areas rank, and their listing counts, grouped from `GET /properties`                                                                                                                                 | Views, visitors, inquiries, favourites, device split                        |
-| **Notifications** | Real notifications from backend API with read/unread states, server-side filtering and pagination, plus browser push notifications                                                                         | —                                                                           |
-| **Settings**      | Your name and phone (`PATCH /users/me`), your password (`PATCH /users/me/password`), sign out                                                                                                              | Platform toggles — shown read-only with the reason, not as a fake form      |
-
-Two of those demos are fake for a harder reason than a missing endpoint: there
-is nowhere in the schema to put the data.
-
-- **Verification documents** — a landlord submits a national ID _number_. No file
-  is uploaded, so there is nothing to review or count.
-- **Rejection history** — approval is one `verified` boolean. There is no rejected
-  state and no column for a reason, so a rejection cannot be recorded. The ✗
-  action offers the nearest real, reversible power instead: suspend the account
-  with a reason.
+| Screen            | Live capability |
+| ----------------- | --------------- |
+| **Dashboard**     | Headline counts, revenue trend, subscription mix, report alerts, and recent audit activity from `GET /admin/dashboard` |
+| **Landlords**     | Pending/approved queues, approval, account suspension, identity details, property counts, and subscription coverage |
+| **Users**         | List and filter accounts, change roles, suspend with a stored reason, and reinstate |
+| **Properties**    | Live listings with landlord and server-side county, town, estate, rent, and bedroom filters |
+| **Payments**      | Filterable payment monitoring, revenue series, and manual reconciliation |
+| **Subscriptions** | Per-property listing terms, capacity, grants, and active/lapsed filtering |
+| **Reports**       | Listing report queues, filtering, detail inspection, atomic listing hiding, and resolution |
+| **Audit log**     | Paginated administrative history with target, date, and text filters plus CSV export |
+| **Notifications** | Server notifications with read state, filtering, pagination, and browser push |
+| **Settings**      | Profile, password, account state, API connection, and sign out |
 
 Reports are fully backed by Milestone 10 database schema (`ListingReport` & `AdminAuditLog`), API routes, and admin UI.
 
@@ -278,18 +262,12 @@ If a screen ever shows _The server couldn't answer_ with `HTTP 500 ·
 INTERNAL_SERVER_ERROR`, check the API log for `Timed out fetching a new connection
 from the connection pool` before looking anywhere else.
 
-### What `/admin/dashboard` does not return
+### Dashboard data
 
-API.md originally specified it returning `todaysPayments`, `monthlyRevenue`,
-`expiredSubscriptions`, `pendingPayments` and `reportedListings`. Five of those seven
-fields have no table behind them, so the implemented endpoint **omits** them rather
-than returning zeros, and API.md has been corrected to match.
-
-That is the same rule the rest of this console runs on, applied one layer down: a
-zero from a real endpoint cannot be told apart from a true count of none. A client
-has no way to distinguish "no revenue yet" from "revenue is not implemented", so
-those figures would have arrived unlabelled through the one channel this app treats
-as trustworthy. They stay in `lib/demo/` with a badge until the tables exist.
+`GET /admin/dashboard` supplies the counts, revenue, subscription state, report
+state, and recent administrative activity displayed on the overview. The console
+does not infer historical growth, traffic, or engagement metrics that the backend
+does not collect.
 
 ---
 
@@ -318,13 +296,12 @@ gets worked from wherever the operator is.
 src/
   components/
     app/          AdminShell, PageHeader/Panel, StatCard, charts, StatusBadge,
-                  DemoBadge, Pagination, SearchInput/Toolbar, States, RangeSelect
+                  Pagination, SearchInput/Toolbar, States, RangeSelect
     ui/           shadcn primitives (new-york, neutral, CSS variables)
   lib/
     api/          client (two callers) · types · auth · admin · properties · me
                   concurrency (why nothing here fans out)
     auth/         AuthProvider, ProtectedRoute/GuestOnlyRoute, session storage
-    demo/         registry (what's fake and why) · dashboard · finance · ops · seed
     hooks/        useAsync (abort-safe) · useDebouncedValue (350ms)
     format.ts     KES, compact numbers, dates, relative time, locations
     export-csv.ts CSV with formula-injection guarding and a scope note
@@ -333,18 +310,9 @@ src/
 
 Two conventions worth knowing before you edit:
 
-- **`lib/demo/registry.ts` is the source of truth for honesty.** Every fake value
-  goes through a `DemoFeatureId`, so a badge, a tooltip and a banner can never
-  disagree about what is real. Adding demo data without registering it is the one
-  thing to avoid.
 - **`useAsync`'s fetcher is read through a ref**, so it must not close over state
   that isn't also in `deps`. Its `setData` exists so a mutation's own response can
   patch one row in place — approving a landlord shouldn't blank the queue.
-
-Sample data is seeded from a string hash (`lib/demo/seed.ts`), not `Math.random()`,
-so a given row shows the same numbers on every render and reload.
-
----
 
 ## Verified against a live backend
 

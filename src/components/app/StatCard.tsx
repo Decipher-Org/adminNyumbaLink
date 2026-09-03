@@ -1,8 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 
-import { DemoBadge } from "@/components/app/DemoBadge";
-import type { DemoFeatureId } from "@/lib/demo/registry";
 import { formatDelta } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -15,19 +13,12 @@ import { cn } from "@/lib/utils";
  * gappy at this size. Tabular figures are for columns that must align vertically,
  * which is the table's job, not this one's.
  *
- * The badge placement is the point of this component. On this dashboard the count
- * is usually **real** (from `pagination.total`) while the percentage beside it is
- * **not** (no endpoint reports a previous period). Marking the whole tile as demo
- * would understate the count; marking nothing would overstate the delta. So `demo`
- * flags the value and `delta.demo` flags only the percentage, and a tile can use
- * either, both, or neither.
  */
 export function StatCard({
   label,
   value,
   note,
   icon: Icon,
-  demo,
   delta,
   className,
 }: {
@@ -35,15 +26,11 @@ export function StatCard({
   value: ReactNode;
   note?: string;
   icon?: ComponentType<{ className?: string }>;
-  /** Marks the *value* as sample data. */
-  demo?: DemoFeatureId;
   delta?: {
     /** Percent change. Negative renders as a fall, in the destructive tone. */
     value: number;
     /** e.g. "vs previous 7 days". */
     note?: string;
-    /** Marks only the percentage as sample data. */
-    demo?: DemoFeatureId;
   };
   className?: string;
 }) {
@@ -64,7 +51,6 @@ export function StatCard({
         <p className="text-[26px] leading-tight font-semibold text-foreground sm:text-[28px]">
           {value}
         </p>
-        {demo ? <DemoBadge feature={demo} /> : null}
       </div>
 
       {delta ? (
@@ -85,7 +71,6 @@ export function StatCard({
           {delta.note ? (
             <span className="text-caption text-muted-foreground">{delta.note}</span>
           ) : null}
-          {delta.demo ? <DemoBadge feature={delta.demo} /> : null}
         </div>
       ) : note ? (
         <p className="mt-2 text-caption text-muted-foreground">{note}</p>

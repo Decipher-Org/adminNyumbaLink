@@ -168,8 +168,8 @@ export async function listLandlords({
  * "Landlord is already approved.", which is why the queue can be optimistic
  * about a double-click without needing to guard it.
  *
- * There is no rejection endpoint. Nothing in the schema records a rejection or a
- * reason, so the mockup's Reject action and Rejection History tab are demo-only.
+ * There is no rejection endpoint. The UI therefore exposes only approval and the
+ * separate, durable account-suspension action.
  */
 export function approveLandlord(id: string): Promise<AdminLandlord> {
   return apiFetch<AdminLandlord>(`/admin/landlords/${id}/approve`, {
@@ -434,8 +434,7 @@ export type DashboardResponse = {
  * than a reconciled breakdown. The grouped path narrows that window to a single
  * query but does not close it.
  *
- * Real Milestone 1–5 data. The growth percentages beside them are not; those come
- * from `lib/demo/` because no endpoint reports a previous period.
+ * Every value returned here comes from a backend endpoint.
  */
 export async function fetchPlatformCounts(
   signal?: AbortSignal,

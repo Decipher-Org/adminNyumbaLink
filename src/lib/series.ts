@@ -1,11 +1,8 @@
 /**
  * Date ranges and chart-point shapes, shared by every screen with a trend on it.
  *
- * These lived in `lib/demo/dashboard.ts` while the only charts were demo charts. They
- * are formatting helpers, not fake data — `RangeKey` is the selector's vocabulary and
- * `TrendPoint` is what the chart components take — and real revenue now depends on
- * them, so leaving them under a directory whose name asserts "none of this is real"
- * would make that name a lie.
+ * `RangeKey` is the selector's vocabulary and `TrendPoint` is what the live revenue
+ * chart components consume.
  *
  * The three windows are also the three the backend accepts on
  * `GET /admin/payments/revenue`, which validates `days` against an allow-list. Keep
@@ -29,8 +26,7 @@ export type TrendPoint = { label: string; value: number };
 /**
  * "Mon" for a week, "20 May" for anything longer, where a weekday repeats.
  *
- * Counts back from today by index, so it labels a series that ends today — which both
- * the demo generators and `revenueSeries` produce.
+ * Counts back from today by index for a series that ends today.
  */
 export function pointLabel(index: number, days: number): string {
   const date = new Date();
